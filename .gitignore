@@ -1,4 +1,6 @@
 # COMMENT
 # THIS FILE SHOULD PREVENT THE CONTENTS OF private FOLDER FROM BEING CHECKED IN
 /private
-/node_modules
+# MAKE SURE app_config.js DOES NOT GET COMMITTED....
+/node_modules/*
+!node_modules/mongo_service.js
