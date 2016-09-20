@@ -96,7 +96,7 @@ appModule.service("GameStateService", function( ){
 		counterImages: { size:60 },
 		mapImages: [
 			{
-				url:"images/BCS-LB-Big-Map.png", 
+				url:"../../../images/BCS-LB-Big-Map.png",  // NOT USED FROM HERE - SEE /css/style.css....
 				rows:20, columns:30, totalRows: 70, totalColumns: 123, hexSize: 59.664,
 				flatTopHexes:true, oddLayoutHexes:true, sizeX:11380, sizeY:7385, 
 				offsetX:-18, offsetY:-16 , scaleY:1.00

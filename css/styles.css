@@ -1,0 +1,45 @@
+body {
+	background:  url("../images/BCS-LB-Big-Map.png");
+    width:11380px;
+    height:7385px;
+    padding:0px;
+    margin:0px;
+}
+.counter {
+    fill: #999;      	
+}
+.UK_COUNTER {
+    fill: #C97;
+}        
+.GE_COUNTER {
+    fill: #BBB;
+}
+.US_COUNTER {
+    fill: #9b6;
+}
+.defaultHex {
+    stroke-width:0.1;
+    stroke:"red";
+    fill:"white";
+    fill-opacity:0;
+}
+.hilightHex {
+    fill:yellow;
+    fill-opacity:0.3;
+}
+.woodsHex {
+    fill:#9C9;
+    fill-opacity:0.3;
+}
+.forestHex {
+    fill:#462;
+    fill-opacity:0.3;
+}
+.rollingHex {
+    fill:#864;
+    fill-opacity:0.3;
+}
+.slopeHex {
+    fill:#531;
+    fill-opacity:0.3;
+}
