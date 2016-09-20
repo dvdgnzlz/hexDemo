@@ -114,9 +114,9 @@ app.sendEmailMessage = function( mailOptions, callback ){
 
 
 // // Load services to operate with mongo database...
-// var mongoService = require('mongo_service.js');
-// app.MongoService = mongoService; //expose to other modules...
-// mongoService.setModuleDependencies( config, dbClient, fs, xml2js, ObjectID );
+var mongoService = require('mongo_service.js');
+app.MongoService = mongoService; //expose to other modules...
+mongoService.setModuleDependencies( config, dbClient, fs, xml2js, ObjectID );
 
 // Look to the routes.js file for the server-side routing that is taking place ....
 var routes = require('./routes')( app );
@@ -126,5 +126,6 @@ var routes = require('./routes')( app );
 http.createServer(app).listen(config.server.port, function(){
   console.log('Express server listening on port ' + config.server.port);
   config.mailOptions.subject="HexDemo app started on port " + config.server.port;
+  mongoService.pingDatabase();
   //app.sendEmailMessage();
 });
