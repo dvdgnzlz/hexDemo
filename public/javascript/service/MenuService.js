@@ -3,6 +3,7 @@
 
 
 appModule.service('MenuService', function( $rootScope ){
+    console.log("MenuService");
     // RESPONSIBLE FOR HOLDING THE DATA MODEL OF ALL MENUS TO BE RENDERED BY THE UI....
     var _that = this;
     var _menuDefArr = [];
@@ -26,6 +27,7 @@ appModule.service('MenuService', function( $rootScope ){
         return _title;
     };
     this.clearMenus = function(){
+        console.log( "CLEAR MENUS");
         _menuDefArr = [];
         $rootScope.$broadcast("HIDE_MENUS" );
     };

@@ -4,5 +4,82 @@ head
 	meta(HTTP-EQUIV="Pragma", CONTENT="no-cache")
 	meta(charset="utf-8")
 	title Hex Demo App
-body
-	div(style="color:red;") Hello from main.jade
+	link(rel="stylesheet", href="css/styles.css")
+	link(rel="stylesheet", href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css")
+	script(src="https://code.jquery.com/jquery-3.1.0.min.js" type="text/javascript")
+	script(src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js", type="text/javascript")
+	script(src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.8/angular.min.js", type="text/javascript")
+	script(src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.1.3/ui-bootstrap-tpls.min.js", type="text/javascript")
+	script(src="javascript/Snap.svg-0.4.1/dist/snap.svg-min.js")
+	script(src="javascript/library/socket.io.js")
+	script(src="javascript/library/Line.js")
+	script(src="javascript/main.js")
+	script(src="javascript/service/HexService.js")
+	script(src="javascript/service/CounterService.js")
+	script(src="javascript/service/CounterDataService.js")
+	script(src="javascript/service/MapRoutingService.js")
+	script(src="javascript/service/MapDataService.js")
+	script(src="javascript/service/TerrainService.js")
+	script(src="javascript/service/MenuService.js")
+
+body(ng-controller="AppController", style="padding:0px; margin:0px; border:solid 2px green;")
+	div(ng-controller="MenuController" style="padding:0px; margin:0px;")
+		span(uib-dropdown="", dropdown-append-to-body="", is-open="isMenuOpen", on-toggle="toggled(open)", ng-style="{'position':'absolute', 'top':menuPos.y + 'px', 'left':menuPos.x + 'px'}")
+			span(uib-dropdown-toggle)
+			ul(uib-dropdown-menu)
+				li(class="dropdown-header") {{title}}
+				li(ng-repeat="menuDef in menuDefs track by $index")
+					a(href="" ng-click="menuDef.onClickFn()") {{menuDef.title}}
+	div
+		svg(id="oSvgPanel" width="100" height="100")
+			defs
+				g(id="oGenericLogo")
+					rect(width="22" height="15" fill="white" stroke="black" stroke-width="1")
+				g(id="oHQLogo")
+					use(xlink:href="#oGenericLogo")
+					text(x="2" y="12" stroke="black" font-size="12") HQ
+				g(id="oTrainLogo")
+					rect(x="-8" y="25" width="36" height="3" fill="white" stroke="white")
+					circle(cx="0" cy="34" r="6" fill="white" stroke="white" stroke-width="3" fill-opacity="0")
+					circle(cx="20" cy="34" r="6" fill="white" stroke="white" stroke-width="3" fill-opacity="0")
+
+				g(id="oArmorLogo")
+					rect(width="22" height="15" fill="yellow" stroke="black" stroke-width="1.3")
+					ellipse(cx="11" cy="7.5" rx="9" ry="6" stroke="black" stroke-width="1.3" fill="yellow")
+				g(id="oInfantryLogo")
+					rect(width="22" height="15" fill="white" stroke="black" stroke-width="1.3")
+					line(x1="0" y1="0" x2="22" y2="15" stroke-width="1.5" stroke="black")
+					line(x1="0" y1="15" x2="22" y2="0" stroke-width="1.5" stroke="black")
+				g(id="oArmInfLogo")
+					use(xlink:href="#oInfantryLogo")
+					ellipse(cx="11" cy="7.5" rx="9" ry="6" stroke="black" stroke-width="1.3" fill="yellow" fill-opacity="0")
+				filter(id="dropShadow")
+					feGaussianBlur(in="SourceAlpha" result="shadow" stdDeviation="4")
+					feOffset(dx="2" dy="2" in="shadow" result="offsetShadow")
+					feMerge
+						feMergeNode(in="offsetShadow")
+						feMergeNode(in="SourceGraphic")
+				filter(id="dropShadowSm")
+					feGaussianBlur(in="SourceAlpha" result="shadow" stdDeviation="3")
+					feOffset(dx="1" dy="1" in="shadow" result="offsetShadow")
+					feMerge
+						feMergeNode(in="offsetShadow")
+						feMergeNode(in="SourceGraphic")
+
+				rect(id="oCounterBase" width="30" height="30" rx="5" ry="5")
+				g(id="oCounterBevel")
+					use(xlink:href="#oCounterBase" x="0" y="0" fill="#000" filter="url(#dropShadowSm)")
+					use(xlink:href="#oCounterBase" x="-1.1" y="-1.1" fill="#E0E0E0")
+					use(xlink:href="#oCounterBase" x="1.5" y="1.5" fill="#333")
+					use(xlink:href="#oCounterBase" x="0" y="0")
+			//-ANYTHING THAT SHOULD RENDER BELOW HEXES GOES HERE 
+			g(id="oSubLayer") 
+			//- HEX COLLECTION WILL GO HERE
+			g(id="oHexMap")
+			//- HEX INFO WILL GO HERE
+			g(id="oMapInfo")
+			//- COUNTERS WILL GO HERE
+			g(id="oCounterDisplayLayer")
+			//- UNIT DISPLAY PANEL
+			g(id="oUnitDisplay")
+				rect(x="0" y="0" height="400" width="200" fill="white" rx="15" filter="url(#dropShadow)")

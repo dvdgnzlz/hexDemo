@@ -1,4 +1,4 @@
-appModule.service('CounterService', function( CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
+appModule.service('CounterService', function( WebSocketService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
     var _that = this;
     var _s = SvgService.svg;
     var _counterLayer = Snap('#oCounterDisplayLayer');
@@ -146,6 +146,7 @@ appModule.service('CounterService', function( CounterDataService, HexService, Sv
         _that.renderCounter( unit );
         
         var costArr = MapRoutingService.getMovementCostArray( unit, unit.getLocation() );
+        WebSocketService.sendMessage( "counter_selected", unit.getId() );
     };
 
     var _getUnitsInFormation = function( formationId ){

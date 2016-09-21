@@ -6,6 +6,26 @@ var s = null;
 
 
 
+appModule.service('WebSocketService', function( ) {
+	console.log( 'WebSocketService');
+	var socket = io();
+	//var socket = io("http://localhost:3001");
+	//var socket = io('http://localhost:3001/my-namespace', { path: '/myapp/socket.io'});
+	this.sendMessage = function( msg, data ){
+		socket.emit( msg, data );
+	}
+
+	socket.on('server_message', function(msg){
+		console.log( "MESSAGE FROM WebSocket.... server_message" );
+		console.log( msg );
+	});
+
+
+});
+
+
+
+
 
 appModule.service('MainAppService', function( SvgService, HexService, $timeout, $http, $window ) {
 	//console.log("MainAppService");
@@ -99,7 +119,7 @@ appModule.service("GameStateService", function( ){
 				url:"../../../images/BCS-LB-Big-Map.png",  // NOT USED FROM HERE - SEE /css/style.css....
 				rows:20, columns:30, totalRows: 70, totalColumns: 123, hexSize: 59.664,
 				flatTopHexes:true, oddLayoutHexes:true, sizeX:11380, sizeY:7385, 
-				offsetX:-18, offsetY:-16 , scaleY:1.00
+				offsetX:-18, offsetY:2 , scaleY:1.00
 			}
 		]
 	};4
@@ -286,7 +306,7 @@ appModule.service("FormationService", function( ){
 
 
 appModule.controller('MenuController', function( MainAppService, GameStateService, SvgService, CounterService, $scope, MenuService, TerrainService ){   
-	//console.log( 'MenuController ');
+	console.log( 'MenuController ');
 	$scope.menuDefs = [];
 	$scope.menuPos = new Point(0,0);
 	$scope.isMenuOpen = false;
@@ -295,18 +315,19 @@ appModule.controller('MenuController', function( MainAppService, GameStateServic
   $scope.toggled = function(isOpen) {
   	$scope.isMenuOpen = isOpen;
   	MenuService.setStatus( isOpen );//let the service know whether it is showing or not....
-    //console.log('Dropdown is now: ', $scope.isMenuOpen);
+    console.log('Dropdown is now: ', $scope.isMenuOpen);
   };
 
 	var _renderMenus = function( evt, screenPt ){
 		$scope.title = MenuService.getTitle();
-		//console.log("GOT THE MESSAGE." + screenPt.x + ", " + screenPt.y);
+		console.log("GOT THE MESSAGE TO SHOW MENUS : " + $scope.title + "  " + screenPt.x + ", " + screenPt.y);
 		$scope.menuPos = screenPt;
 		$scope.menuDefs = MenuService.getMenuDefs();
 		$scope.isMenuOpen = true;
 		$scope.$digest();
 	};
 	var _hideMenus = function( ){
+		console.log(" GOT MESSAGE TO HIDE MENUS");
 		$scope.isMenuOpen = false;
 		$scope.$digest();
 	};

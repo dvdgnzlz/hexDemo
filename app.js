@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////
 // SERVER SIDE CODE CONTROLLING THE MAIN NODE/EXPRESS APPLICATION //
-//xxx
+// HEX DEMO APP *****************
 
 var os = require('os');
 var fs = require('fs');
@@ -14,6 +14,21 @@ var appConfigService = require('app_config.js');
 var config = appConfigService.getConfig(os);
 
 var http = require('http');
+// var io = require('socket.io')(http); // enable web sockets...
+
+
+// io.on('connection', function(socket){
+//   console.log('a user connected');
+// });
+
+
+
+
+
+
+ 
+
+
 var https = require('https');
 
 var express = require('express');   
@@ -123,9 +138,35 @@ var routes = require('./routes')( app );
 
 
 
-http.createServer(app).listen(config.server.port, function(){
+var server = http.createServer(app).listen(config.server.port, function(){
   console.log('Express server listening on port ' + config.server.port);
   config.mailOptions.subject="HexDemo app started on port " + config.server.port;
   mongoService.pingDatabase();
   //app.sendEmailMessage();
+});
+
+
+
+var io  = require('socket.io')(http, { path: '/myapp/socket.io'}).listen(server);
+//var io = require('socket.io')(server, { path: '/sockets' }).listen(server);
+
+// io.of('/my-namespace').on('connection', function(socket){
+//     console.log('a user connected with id %s', socket.id);
+
+//     socket.on('my-message', function (data) {
+//         io.of('my-namespace').emit('my-message', data);
+//         // or socket.emit(...)
+//         console.log('broadcasting my-message', data);
+//     });
+// });
+io.on('connection', function(socket){
+    console.log('a user connected with id %s', socket.id);
+    io.emit('server_message', socket.id );
+    socket.on('disconnect', function(){
+      console.log('user disconnected');
+    });
+    socket.on('counter_selected', function (data) {
+        io.emit('server_message', data);
+        console.log('broadcasting my-message', data);
+    });
 });
