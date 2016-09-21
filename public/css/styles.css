@@ -1,10 +1,25 @@
 body {
 	background:  url("../images/BCS-LB-Big-Map.png");
+    xxbackground-position: 0px, -40px;
+    xxbackground-position-y: -20px;
+    xxbackground-repeat: no-repeat;
     width:11380px;
     height:7385px;
     padding:0px;
     margin:0px;
 }
+.modal-title {color:#6B6060;  xxxfont-family: 'Lucida Grande', sans-serif;}
+.modal-header { 
+    background-color:#F9F9FA; border-top-right-radius: 10px; border-top-left-radius: 10px;
+}
+.modal-body {
+    background-color:#FDFDFD;
+}
+.modal-footer {
+    background-color:#F9F9FA; margin-top:0px; border-bottom-right-radius: 10px; border-bottom-left-radius: 10px;
+}
+.form-label { color:#6B6060; left:14px; margin-top:4px; }
+
 .counter {
     fill: #999;      	
 }

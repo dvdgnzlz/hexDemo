@@ -36,8 +36,8 @@ module.exports = function( app ) {
   });
 
   
-  // render an Angular partial html page using Jade templates....
-  app.get('/client_partials/:fileName', function(req,res){
+  // RENDER JADE PARTIALS FOR MODAL DIALOGS....
+  app.get('/modals/:fileName', function(req,res){
     var fileName = req.params.fileName;
      // get ip address of the user....
     var ip = req.headers['x-forwarded-for'] || 
@@ -45,7 +45,7 @@ module.exports = function( app ) {
          req.socket.remoteAddress ||
          req.connection.socket.remoteAddress;
     var urlLocName = 'bbs_efs#';
-    res.render('partials/' + fileName, {data: {path:urlLocName, ip: ip, firstName:"Xxx",lastName:"Xxx",userId:"XXx"}} );
+    res.render('modals/' + fileName, {data: {path:urlLocName, ip: ip, firstName:"Xxx",lastName:"Xxx",userId:"XXx"}} );
   });
   
   // redirect users here if their browser is not IE10+

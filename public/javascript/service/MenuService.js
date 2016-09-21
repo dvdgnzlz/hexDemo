@@ -27,7 +27,6 @@ appModule.service('MenuService', function( $rootScope ){
         return _title;
     };
     this.clearMenus = function(){
-        console.log( "CLEAR MENUS");
         _menuDefArr = [];
         $rootScope.$broadcast("HIDE_MENUS" );
     };

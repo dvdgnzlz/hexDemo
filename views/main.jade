@@ -22,8 +22,8 @@ head
 	script(src="javascript/service/TerrainService.js")
 	script(src="javascript/service/MenuService.js")
 
-body(ng-controller="AppController", style="padding:0px; margin:0px; border:solid 2px green;")
-	div(ng-controller="MenuController" style="padding:0px; margin:0px;")
+body(ng-controller="AppController", style="padding:0px; margin:0px;")
+	div(ng-controller="MenuController" style="padding:0px; margin:0px; margin-top:-20px;")
 		span(uib-dropdown="", dropdown-append-to-body="", is-open="isMenuOpen", on-toggle="toggled(open)", ng-style="{'position':'absolute', 'top':menuPos.y + 'px', 'left':menuPos.x + 'px'}")
 			span(uib-dropdown-toggle)
 			ul(uib-dropdown-menu)

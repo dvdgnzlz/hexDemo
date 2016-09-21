@@ -119,7 +119,7 @@ appModule.service("GameStateService", function( ){
 				url:"../../../images/BCS-LB-Big-Map.png",  // NOT USED FROM HERE - SEE /css/style.css....
 				rows:20, columns:30, totalRows: 70, totalColumns: 123, hexSize: 59.664,
 				flatTopHexes:true, oddLayoutHexes:true, sizeX:11380, sizeY:7385, 
-				offsetX:-18, offsetY:2 , scaleY:1.00
+				offsetX:-18, offsetY:22 , scaleY:1.00
 			}
 		]
 	};4
@@ -302,11 +302,59 @@ appModule.service("FormationService", function( ){
 });
 
 
+// USE THIS SERVICE TO LAUNCH ALL MODAL DIALOGS....
+appModule.service("ModalLaunchService", function( $uibModal ){
+	_that = this;
+	var $ctrl = this;
+  $ctrl.items = ['item1', 'item2', 'item3'];
+  $ctrl.openLoginModal = function ( paramObj ) {
+  	//$ctrl.params = paramObj;
+    var modalInstance = $uibModal.open({
+      //animation: true,
+      templateUrl: 'modals/LoginModal',
+      controller: 'LoginModalInstanceCtrl',
+      controllerAs: '$modalCtrl', // how the HTML refers to the controller....
+      size: 'md',
+      resolve: {
+        params: function(){ return paramObj; }
+      }
+    });//end modalInstance definition...
+    
+    modalInstance.result.then(
+    	// OK CLICKED....
+    	function (returnObj) { 
+	      console.log("RETURN VALUE");
+	      console.log( returnObj );
+    	}, 
+    	// CANCEL CLICKED....
+    	function () {
+      console.log('Modal dismissed at: ' + new Date());
+    	}
+    );// end result.then...
+	};
+});
 
+
+
+appModule.controller('LoginModalInstanceCtrl', function( $uibModalInstance, params ){
+
+	console.log( "params" );
+	console.log( params );
+  var $ctrl = this;
+
+
+  $ctrl.ok = function () {
+    $uibModalInstance.close( params );
+  };
+
+  $ctrl.cancel = function () {
+    $uibModalInstance.dismiss('cancel');
+  };
+});
 
 
 appModule.controller('MenuController', function( MainAppService, GameStateService, SvgService, CounterService, $scope, MenuService, TerrainService ){   
-	console.log( 'MenuController ');
+	//console.log( 'MenuController ');
 	$scope.menuDefs = [];
 	$scope.menuPos = new Point(0,0);
 	$scope.isMenuOpen = false;
@@ -320,14 +368,12 @@ appModule.controller('MenuController', function( MainAppService, GameStateServic
 
 	var _renderMenus = function( evt, screenPt ){
 		$scope.title = MenuService.getTitle();
-		console.log("GOT THE MESSAGE TO SHOW MENUS : " + $scope.title + "  " + screenPt.x + ", " + screenPt.y);
 		$scope.menuPos = screenPt;
 		$scope.menuDefs = MenuService.getMenuDefs();
 		$scope.isMenuOpen = true;
 		$scope.$digest();
 	};
 	var _hideMenus = function( ){
-		console.log(" GOT MESSAGE TO HIDE MENUS");
 		$scope.isMenuOpen = false;
 		$scope.$digest();
 	};

@@ -1,4 +1,4 @@
-appModule.service('CounterService', function( WebSocketService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
+appModule.service('CounterService', function( ModalLaunchService, WebSocketService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
     var _that = this;
     var _s = SvgService.svg;
     var _counterLayer = Snap('#oCounterDisplayLayer');
@@ -8,6 +8,10 @@ appModule.service('CounterService', function( WebSocketService, CounterDataServi
     baseCounterSvg.attr( {width:GameStateService.getCounterSize(), height:GameStateService.getCounterSize() } );
 
     var _unitArr = CounterDataService.getAllUnitsOnMap();
+
+
+
+    ModalLaunchService.openLoginModal('lg');
 
     var onCounterMove = function(x, y, x1, y1, evt){
         // this = the counter moving....
