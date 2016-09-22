@@ -18226,6 +18226,7 @@ appModule.service('WebSocketService', function( ) {
 		console.log( "MESSAGE FROM WebSocket.... server_message" );
 		console.log( msg );
 	});
+	
 }); 
 
 
