@@ -37,11 +37,8 @@ module.exports = function( grunt ){
 	"public/javascript/library-3rd-party/socket.io.js",
 	"public/javascript/library/*.js",
 	"public/javascript/*.js",
-	"public/javascript/service/*.js",
-	// "public/javascript/libraries/jquery/jquery-2.2.4.min.js",
-	// "public/javascript/angularJs/**/*.js",
-	// "public/javascript/bbs_data/**/*.js",
-	// "public/javascript/emr_data/**/*.js",
+	"public/javascript/service/**/*.js",
+	"public/javascript/controller/**/*.js",
 	];
 	var taskArray = [
 		//'jshint:checksome',//jshint the files....
@@ -125,35 +122,34 @@ module.exports = function( grunt ){
 		},
 // grunt http:download
 		http: {
-    		download: {
-      			options: {url: ['http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js']},
-      			dest: 'public/javascript/stage/jquery.min.js'
-    		}
+  		download: {
+  			options: {url: ['http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js']},
+  			dest: 'public/javascript/stage/jquery.min.js'
+  		}
+  	},
+	  jshint: {
+  		options:{
+  			browser: true,
+  			devel: true,
+  			strict: false,
+  			force: false,
+  			undef: true,
+  			unused: "vars",
+  			multistr: true,
+  			maxerr: 20,
+  			globals:{
+  				"$":true,
+  				"angular":true,
+  			}
   		},
-  	  	jshint: {
-  	  		options:{
-  	  			browser: true,
-  	  			devel: true,
-  	  			strict: false,
-  	  			force: false,
-  	  			undef: true,
-  	  			unused: "vars",
-  	  			multistr: true,
-  	  			maxerr: 20,
-  	  			globals:{
-  	  				"$":true,
-  	  				"angular":true,
-  	  			}
-  	  		},
  			checksome: [
- 				"public/javascript/*.js",
- 				"public/javascript/library/*.js",
- 				"public/javascript/service/*.js"
+				"public/javascript/*.js",
+				"public/javascript/library/*.js",
+				"public/javascript/service/*.js"
  			],
  			newstuff:[
  				"public/javascript/angularJs/ang_bbs.js"
  			]
-
  		},	
 	});
 	grunt.loadNpmTasks('grunt-contrib-uglify');
