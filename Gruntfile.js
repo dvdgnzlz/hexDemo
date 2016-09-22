@@ -8,18 +8,18 @@ module.exports = function( grunt ){
 	var today = new Date();
 	var year = today.getFullYear();
 	var isoDate = today.toISOString();
-	var version = "1.16.03.22.0001";
+	var version = "0001";
 	// generate the name of the intermediate and final javascript files....
-	var jsRootName = "public/javascript/min/BBS_EFS.";
+	var jsRootName = "public/javascript/minified/hexDemo.";
 	// generate the name of the intermediate and final html (JADE) file....
-	var htmlRootName = "javascript/min/BBS_EFS.";
+	var htmlRootName = "javascript/minified/hexDemo.";
 	var jsSuffixName = ".js";
 	var jsMidName = "concat";
 	var jsVersionName = jsMidName;
 	//if (!buildForProduction){
 		jsVersionName += "." + version;
 	//}
-	var jsFileName = jsRootName + jsVersionName + jsSuffixName;
+	var jsFileName = jsRootName + jsVersionName + jsSuffixName; // CONCATENATED JAVASCRIPT... 
 	var jsBuildFileName = jsRootName + jsMidName + jsSuffixName;
 	var htmlFileName = htmlRootName + jsVersionName + jsSuffixName;
 	if( buildForProduction){
@@ -33,39 +33,32 @@ module.exports = function( grunt ){
 	console.log(jsJadeLocation);
 
 	var listOfJavascriptFiles = [
-	//"public/javascript/libraries/jquery/jquery-3.1.0.min.js",
-	"public/javascript/libraries/jquery/jquery-2.2.4.min.js",
-	//"public/javascript/libraries/jquery/jquery-1.11.3.js",
-	//"public/javascript/libraries/angular-1.2.15/angular.min.js",
-	//"public/javascript/libraries/angular-1.2.15/angular-route.min.js",
-	//"public/javascript/libraries/angular-1.2.15/angular-animate.min.js",
-	//"public/javascript/libraries/angular-1.2.15/angular-sanitize.min.js", 
-	"public/javascript/libraries/angular-1.3.20/angular.min.js",
-	"public/javascript/libraries/angular-1.3.20/angular-route.min.js",
-	"public/javascript/libraries/angular-1.3.20/angular-animate.min.js",
-	"public/javascript/libraries/angular-1.3.20/angular-sanitize.min.js", 
-		"public/javascript/*.js",
-		"public/javascript/libraries/*.js",
-		"public/javascript/angularJs/**/*.js",
-		"public/javascript/bbs_data/**/*.js",
-		"public/javascript/emr_data/**/*.js",
+	"public/javascript/library-3rd-party/Snap.svg-0.4.1/dist/snap.svg.js",
+	"public/javascript/library-3rd-party/socket.io.js",
+	"public/javascript/library/*.js",
+	"public/javascript/*.js",
+	"public/javascript/service/*.js",
+	// "public/javascript/libraries/jquery/jquery-2.2.4.min.js",
+	// "public/javascript/angularJs/**/*.js",
+	// "public/javascript/bbs_data/**/*.js",
+	// "public/javascript/emr_data/**/*.js",
 	];
 	var taskArray = [
-		'jshint:checksome',//jshint the files....
+		//'jshint:checksome',//jshint the files....
 		'concat:coreHtml',// generate head.jade file
-		'concat:coreJs', // concat all js to jsFileName....
+		'concat:concatCoreJs', // concat all js to jsFileName....
 		'concat:coreJsReadable', //copy jsFileName to jsBuildFileName (readable file with non-changing name)...
-		'ngAnnotate:appBbs', //convert jsFileName so it can be minified...
-		'uglify:foo',//minify BBS_EFS_annotate.js to BBS_EFS.min.js
+		'ngAnnotate:annotateJs', //convert jsFileName so it can be minified...
+		'uglify:uglifyJs',//minify hexDemo_annotate.js to hexDemo.min.js
 		//'watch'
 	];
 	var taskArrayWithWatch = [
-		'jshint:checksome',//jshint the files....
+		//'jshint:checksome',//jshint the files....
 		'concat:coreHtml',// generate head.jade file
-		'concat:coreJs', // concat all js to jsFileName....
+		'concat:concatCoreJs', // concat all js to jsFileName....
 		'concat:coreJsReadable', //copy jsFileName to jsBuildFileName (readable file with non-changing name)...
-		'ngAnnotate:appBbs', //convert jsFileName so it can be minified...
-		'uglify:foo',//minify BBS_EFS_annotate.js to BBS_EFS.min.js
+		'ngAnnotate:annotateJs', //convert jsFileName so it can be minified...
+		'uglify:uglifyJs',//minify hexDemo_annotate.js to hexDemo.min.js
 		'watch'
 	];
 	grunt.initConfig({
@@ -81,7 +74,7 @@ module.exports = function( grunt ){
 
 
 		concat: {
-			coreJs:{
+			concatCoreJs:{
 				options: {
 					seperator: ";",
 					banner: useStrictString + "// VERSION: " +  version + _lf,
@@ -100,28 +93,27 @@ module.exports = function( grunt ){
 			coreHtml:{
 				options: {
 					seperator: "",
-					banner: "// GENERATED FROM head_pre.jade BY GRUNT..." + _lf,
-					footer: jsJadeLocation,
+					banner: "//- GENERATED FROM head_post.jade BY GRUNT..." + _lf,
+					footer: _lf + "//- THIS LINE ADDED VIA GRUNT..." + _lf + jsJadeLocation,
 				},
-				src: "views/includes/head_pre.jade",
-				dest: "views/includes/head.jade",
+				src: "views/head.jade",
+				dest: "views/head_post.jade",
 			}
 
 		},
 		ngAnnotate:{
-			appBbs: {
+			annotateJs: {
 				files: {
-					'public/javascript/min/BBS_EFS.annotate.js': [jsFileName]
+					'public/javascript/minified/hexDemo.annotate.js': [jsFileName]
 				}
 			}
 		},
 		uglify: {
-			foo: {
+			uglifyJs: {
 				src: [
-					"public/javascript/min/BBS_EFS.annotate.js",
-
+					"public/javascript/minified/hexDemo.annotate.js"
 				],
-				dest: "public/javascript/min/BBS_EFS.min.js",
+				dest: "public/javascript/minified/hexDemo.min.js",
 				options:{
 					beautify: false,
 					banner : "// COPYRIGHT 2016 - Blackbird Soloutions, Inc. -" + isoDate + _lf,
@@ -155,10 +147,8 @@ module.exports = function( grunt ){
   	  		},
  			checksome: [
  				"public/javascript/*.js",
- 				"public/javascript/bbs_data/**/*.js",
- 				"public/javascript/emr_data/**/*.js",
- 				"public/javascript/angularJs/ang*.js",
- 				"public/javascript/angularJs/con*.js",
+ 				"public/javascript/library/*.js",
+ 				"public/javascript/service/*.js"
  			],
  			newstuff:[
  				"public/javascript/angularJs/ang_bbs.js"

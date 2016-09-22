@@ -10,8 +10,9 @@ div
 		div.row.modal-row
 			div.col-xs-3.text-right.form-label User Name: 
 			div.col-xs-7 
-				input.form-control(ng-model="userName")
-		div.row.modal-row
+				input.form-control(id="oLoginUserName", ng-model="$modalCtrl.params.userName")
+		
+		//-div.row.modal-row
 			div.col-xs-2.text-right.bbs_text_label_lt Phone:
 			div.col-xs-10 
 				span.bbs_text_label_lt Main: 
@@ -21,7 +22,7 @@ div
 					span {{PatientData.data.phones.cell}} &nbsp;&nbsp;
 				span.bbs_text_label_lt Work: 
 				span {{PatientData.data.phones.work}}
-		div.row.modal-row(ng-if="PatientData.data.insurance.primary && PatientData.data.insurance.primary.length>0")
+		//-div.row.modal-row(ng-if="PatientData.data.insurance.primary && PatientData.data.insurance.primary.length>0")
 			div.col-xs-2.text-right.bbs_text_label_lt Insurance:
 			div.col-xs-10 
 				span.bbs_text_label_lt Primary: 

@@ -302,19 +302,23 @@ appModule.service("FormationService", function( ){
 });
 
 
+// TRACK USER ACCOUNT INFORMATION HERE....
+appModule.service("AccountService", function( $uibModal ){
+	
+
+});
+
+
 // USE THIS SERVICE TO LAUNCH ALL MODAL DIALOGS....
 appModule.service("ModalLaunchService", function( $uibModal ){
-	_that = this;
-	var $ctrl = this;
-  $ctrl.items = ['item1', 'item2', 'item3'];
-  $ctrl.openLoginModal = function ( paramObj ) {
-  	//$ctrl.params = paramObj;
+  this.openLoginModal = function ( paramObj ) {
     var modalInstance = $uibModal.open({
       //animation: true,
       templateUrl: 'modals/LoginModal',
       controller: 'LoginModalInstanceCtrl',
-      controllerAs: '$modalCtrl', // how the HTML refers to the controller....
+      controllerAs: '$modalCtrl', // how the HTML refers to the controller.... 
       size: 'md',
+      backdrop:'static', // prevent closing by clicking on background.
       resolve: {
         params: function(){ return paramObj; }
       }
@@ -336,13 +340,17 @@ appModule.service("ModalLaunchService", function( $uibModal ){
 
 
 
-appModule.controller('LoginModalInstanceCtrl', function( $uibModalInstance, params ){
+appModule.controller('LoginModalInstanceCtrl', function( $uibModalInstance, params, $timeout ){
 
 	console.log( "params" );
 	console.log( params );
   var $ctrl = this;
+  $ctrl.params = params;
 
-
+  var focusField = function(){
+  	$('#oLoginUserName').focus();
+  };
+  $timeout( focusField, 500 );
   $ctrl.ok = function () {
     $uibModalInstance.close( params );
   };

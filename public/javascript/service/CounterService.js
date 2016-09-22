@@ -11,7 +11,7 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
 
 
 
-    ModalLaunchService.openLoginModal('lg');
+    ModalLaunchService.openLoginModal({userName:"TEST"});
 
     var onCounterMove = function(x, y, x1, y1, evt){
         // this = the counter moving....
@@ -236,7 +236,7 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
             if (unit.isSelected() && !unit.isMoving() ){
                 var radius = 2;
                 var halo = _counterLayer.rect( rectX-radius/2, rectY-radius/2, counterSize+radius, counterSize+radius, radius, radius);
-                //var f = _s.filter( Snap.filter.shadow( 5, 5, 6, "red", 0.5 ));
+                //var f = _s.filter( Snap.filter.shadow( 5, 5, 6, "red", 0.5 ));//<-- WORKS IN FIREFOX, NOT SAFARI...
                 var f = _s.filter( Snap.filter.blur( 0.00001 ));
                 //console.log(f);
                 halo.attr({ x:-radius/2, y:-radius/2, fill:"white", "stroke":"yellow", "stroke-width":10, "fill-opacity":0, "stroke-opacity":1, filter:f});

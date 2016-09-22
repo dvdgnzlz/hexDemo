@@ -1,7 +1,3 @@
-// NEEDS TO BE UPDATE TO WORK WITH HexDemo Points...
-
-
-
 
 
 function Point( x, y ){
