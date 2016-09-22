@@ -10,9 +10,9 @@ module.exports = function( grunt ){
 	var isoDate = today.toISOString();
 	var version = "0001";
 	// generate the name of the intermediate and final javascript files....
-	var jsRootName = "public/javascript/minified/hexDemo.";
+	var jsRootName = "public/javascript/zmin/hexDemo.";
 	// generate the name of the intermediate and final html (JADE) file....
-	var htmlRootName = "javascript/minified/hexDemo.";
+	var htmlRootName = "javascript/zmin/hexDemo.";
 	var jsSuffixName = ".js";
 	var jsMidName = "concat";
 	var jsVersionName = jsMidName;
@@ -97,16 +97,16 @@ module.exports = function( grunt ){
 		ngAnnotate:{
 			annotateJs: {
 				files: {
-					'public/javascript/minified/hexDemo.annotate.js': [jsFileName]
+					'public/javascript/zmin/hexDemo.annotate.js': [jsFileName]
 				}
 			}
 		},
 		uglify: {
 			uglifyJs: {
 				src: [
-					"public/javascript/minified/hexDemo.annotate.js"
+					"public/javascript/zmin/hexDemo.annotate.js"
 				],
-				dest: "public/javascript/minified/hexDemo.min.js",
+				dest: "public/javascript/zmin/hexDemo.min.js",
 				options:{
 					beautify: false,
 					banner : "// COPYRIGHT 2016 - David Gonzalez -" + isoDate + _lf,

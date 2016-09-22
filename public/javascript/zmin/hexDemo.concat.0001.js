@@ -15452,7 +15452,7 @@ var Cube = function( col, row ){
 		var pt = new Point( col, row );
 		//console.log( pt );
 		return pt;
-	};
+	};  
 
 	this.getLosPairs = function( cube ){
 		// CHECK the path between this and cube for Line of Sight paths that go between two hexes (and return those pairs of hexes)...
