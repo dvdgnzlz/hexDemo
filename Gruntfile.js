@@ -59,8 +59,6 @@ module.exports = function( grunt ){
 		'watch'
 	];
 	grunt.initConfig({
-
-
 		watch: {
 			scripts: {
 		    	files: listOfJavascriptFiles,
@@ -68,8 +66,6 @@ module.exports = function( grunt ){
 		    	options: {debounceDelay: 250 },
 			},
 		},
-
-
 		concat: {
 			concatCoreJs:{
 				options: {
@@ -113,7 +109,7 @@ module.exports = function( grunt ){
 				dest: "public/javascript/minified/hexDemo.min.js",
 				options:{
 					beautify: false,
-					banner : "// COPYRIGHT 2016 - Blackbird Soloutions, Inc. -" + isoDate + _lf,
+					banner : "// COPYRIGHT 2016 - David Gonzalez -" + isoDate + _lf,
 					//mangle: true,
 					mangle: {except: ['$q']}, // DON'T MANGE $q OR OBJECTS LIKE assessPlanViewCtrl WONT BE ABLE TO USE PROMISES TO LOAD DATA (e.g. PODs)...
 					screwIE8: false 
