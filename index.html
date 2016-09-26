@@ -27,11 +27,11 @@
     </head>
     <body ng-controller="AppController", style="padding:0px; margin:0px;">
         <div ng-controller="MenuController", style="padding:0px; margin:0px;">
-            <span uib-dropdown="" dropdown-append-to-body="" is-open="isMenuOpen" on-toggle="toggled(open)" ng-style="{'position':'absolute', 'top':menuPos.y + 'px', 'left':menuPos.x + 'px'}">
-                <span uib-dropdown-toggle></span>
+            <span uib-dropdown="", auto-close="disabled", dropdown-append-to-body="", is-open="isMenuOpen", on-toggle="toggled(open)", ng-style="{'position':'absolute', 'top':menuPos.y + 'px', 'left':menuPos.x + 'px'}">
+                <span xxxuib-dropdown-toggle></span>
                 <ul uib-dropdown-menu >
                     <li class="dropdown-header">{{title}}</li>
-                    <li ng-repeat="menuDef in menuDefs track by $index"><a href="" ng-click="menuDef.onClickFn()">{{menuDef.title}}</a></li>
+                    <li ng-repeat="menuDef in menuDefs track by $index"><a href="" ng-click="menuDef.onClickFn( $event );">{{menuDef.title}}</a></li>
                 </ul>
             </span>
         </div>
@@ -46,7 +46,8 @@
       </svg> -->
 
       <div>
-        <svg id="oSvgPanel" width="100" height="100">
+        <div>Hello</div>
+        <svg id="oSvgPanel" ,width="100", height="100">
           <defs>
             <g id="oGenericLogo">
                 <rect width="22" height="15" fill="white" stroke="black" stroke-width="1"></rect>

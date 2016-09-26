@@ -1,173 +1,84 @@
-// DATA MODEL FOR UNITS/COUNTERS IN THE GAME....
 
-function Unit( cData, CounterDataService ){
-    var _rendering = null; // SVG for this object...
-    this.getCounterData = function(){
-        return cData;
-    };
-
-    this.isSelected = function(){
-        return cData.isSelected;
-    };
-    this.select = function( bIsSelected ){
-        if (bIsSelected == false ){
-            cData.isSelected = false;
-            return [];
-        }
-        else {
-            cData.isSelected = true;
-            var newlyUnselectedCounters = CounterDataService.selectCounter( cData );
-            return newlyUnselectedCounters;
-        }
-    }
-    this.isMoving = function( bIsMoving ){
-        // RETURN STATUS OF isMoving ATTRIBUTE...
-        if (bIsMoving==true || bIsMoving==false){
-            cData.isMoving = bIsMoving;
-        }
-        return cData.isMoving;
-    };
-    this.setRendering = function( rendering ){
-        _rendering = rendering;
-    };
-    this.getRendering = function(){
-        return _rendering;
-    };
-    this.getId = function(){
-        return cData.id;
-    };
-    this.getFaction = function(){
-        return cData.faction;
-    };
-    this.getCountry = function(){
-        return cData.country;
-    };
-    this.getClass = function(){
-        return cData.class;
-    };
-    this.getLogoId = function(){
-        return cData.logoId;
-    };
-    this.getLabel = function(){
-        return cData.label;
-    };
-    this.getFormation = function(){
-        return cData.formation;
-    };
-    this.getMaxSteps = function(){
-        return cData.maxSteps;
-    }
-    this.getCurrentSteps = function(){
-        return cData.curSteps;
-    };
-    this.getUnitType = function(){
-        return cData.unitType;
-    };
-    this.getLocation = function(){
-        if (cData.hexX==null) return null;
-        return new Point( cData.hexX, cData.hexY );
-    };
-    this.setLocation = function( point ){
-        if (!point){
-            cData.hexX = null;
-            cData.hexY = null;
-        }
-        cData.hexX = point.x;
-        cData.hexY = point.y;
-    };
-    this.isAssaultUnit = function(){
-        var side = cData.sides[ cData.side ];
-        return side.assault;
-    };
-    this.getArmorValue = function(){
-        var side = cData.sides[ cData.side ];
-        return side.AV;
-    };
-    this.getActionRating = function(){
-        var side = cData.sides[ cData.side ];
-        return side.AR;
-    };
-    this.getRange = function(){
-        var side = cData.sides[ cData.side ];
-        return side.RNG;
-    };
-    this.getMovementAllowance = function(){
-        var side = cData.sides[ cData.side ];
-        return side.MA;
-    };
-    this.getMovementType = function(){
-        var side = cData.sides[ cData.side ];
-        return side.moveType;
-    };
-    this.hasZoneOfControl = function(){
-        if (cData.unitType!="HQ"){
-            return true;
-        }
-        return false;
-    }
-};
-
-
-appModule.service('CounterDataService', function() {
+appModule.service('CounterDataService', function( $rootScope, HttpService, WebSocketService ) {
     var _that = this;
     // SET UP COUNTERS FOR THE GAME....
     var _counterDataArr = [];
-    var _counterDataObj = {}; // store value under key of id....
-    _counterDataArr.push( { id:"CTR_UNIT_29_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmorLogo",
-        label:"23 Hus", formation:"2 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:true, AV:5, AR: 4, RNG:2, MA:16, moveType:"TACTICAL"}
-        ],
-        hexX:4, hexY: 3 } );
-    _counterDataArr.push( { id:"CTR_UNIT_30_ARM", faction: "ALLIES", country:"UK", class:"UK_COUNTER", logoId:"oInfantryLogo", xxxisSelected:true,
-        label:"II/753", formation:"29 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:true, AV:3, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:5, hexY: 3 } );
-    // HQ 
-    _counterDataArr.push( { id:"CTR_HQ_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oHQLogo",
-        label:"HQ", formation:"2 Arm", maxSteps:0, 
-        curSteps: 0, unitType:"HQ", side:0,
-        sides:[
-            {assault:false, CR:5, MA:14, moveType:"TRUCK"}
-        ],
-        hexX:2, hexY: 3} );   
-    // COMBAT TRAIN
-    _counterDataArr.push( { id:"CTR_TRAIN_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oTrainLogo",
-        label:"TRAIN", formation:"2 Arm", maxSteps:0, 
-        curSteps: 0, unitType:"COMBAT_TRAIN", side:0,
-        sides:[
-            {ghost:false},{ghost:true}
-        ],
-        hexX:1, hexY: 1} );  
-    _counterDataArr.push( { id:"CTR_UNIT_HOLZ", faction: "GERMAN", country:"GE", class:"GE_COUNTER", 
-        label:"Holz", formation:"29 Arm", maxSteps:6, 
-        curSteps: 5, unitType:"Armor", side:0,
-        sides:[
-            {assault:false, AV:2, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:5, hexY: 5} );    
+    var _unitsById = {}; // store value under key of id....
+    // _counterDataArr.push( { id:"CTR_UNIT_29_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmorLogo",
+    //     label:"23 Hus", formation:"2 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:true, AV:5, AR: 4, RNG:2, MA:16, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:4, hexY: 3 } );
+    // _counterDataArr.push( { id:"CTR_UNIT_30_ARM", faction: "ALLIES", country:"UK", class:"UK_COUNTER", logoId:"oInfantryLogo", xxxisSelected:true,
+    //     label:"II/753", formation:"29 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:true, AV:3, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:5, hexY: 3 } );
+    // // HQ 
+    // _counterDataArr.push( { id:"CTR_HQ_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oHQLogo",
+    //     label:"HQ", formation:"2 Arm", maxSteps:0, 
+    //     curSteps: 0, unitType:"HQ", side:0,
+    //     sides:[
+    //         {assault:false, CR:5, MA:14, moveType:"TRUCK"}
+    //     ],
+    //     hexX:2, hexY: 3} );   
+    // // COMBAT TRAIN
+    // _counterDataArr.push( { id:"CTR_TRAIN_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oTrainLogo",
+    //     label:"TRAIN", formation:"2 Arm", maxSteps:0, 
+    //     curSteps: 0, unitType:"COMBAT_TRAIN", side:0,
+    //     sides:[
+    //         {ghost:false},{ghost:true}
+    //     ],
+    //     hexX:1, hexY: 1} );  
+    // _counterDataArr.push( { id:"CTR_UNIT_HOLZ", faction: "GERMAN", country:"GE", class:"GE_COUNTER", 
+    //     label:"Holz", formation:"29 Arm", maxSteps:6, 
+    //     curSteps: 5, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:false, AV:2, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:5, hexY: 5} );    
 
-    _counterDataArr.push( { id:"CTR_UNIT_32_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmInfLogo",
-        label:"3/67", formation:"2 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:false, AV:5, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:3, hexY: 3} );   
+    // _counterDataArr.push( { id:"CTR_UNIT_32_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmInfLogo",
+    //     label:"3/67", formation:"2 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:false, AV:5, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:3, hexY: 3} );   
 
-    for( var x=0; x<_counterDataArr.length; x++){
-        var cd = _counterDataArr[x];
-        var unit = new Unit( cd, _that );
-        _counterDataObj[cd.id] = unit; // store each object by id for easy retrieval...
-    }
+
+    var _initializeUnits = function(){
+        for( var x=0; x<_counterDataArr.length; x++){
+            var cd = _counterDataArr[x];
+            var unit = new Unit( cd, _that );
+            _unitsById[cd.id] = unit; // store each object by id for easy retrieval...
+        }
+        $rootScope.$emit("counter_data_has_loaded");
+    };
+
+
+
+    this.unitPropertyHasChanged = function( propertyThatChanged, counterData ){
+        console.log( "CounterDataService.unitPropertyHasChanged " + propertyThatChanged + " " + counterData.id );
+        // called by unit whenever properties change...
+        // notifiy server that unit data has changed...
+        var gameId = "LB_001";
+        //HttpService.updateCounterData( gameId, counterData );
+        var dataObj = {gameId: gameId, counterData: counterData, changedProperty: propertyThatChanged };
+        var test = function(){
+            console.log("THE SERVER HAS STORED THE DATA");
+        }
+        WebSocketService.sendMessage( "counter_data_changed", dataObj, test);
+    };
+
 
 
     this.getUnit = function( unitId ){
-        var unit = _counterDataObj[unitId];
+        var unit = _unitsById[unitId];
         if (!unit) return null;
         return unit;
     };
@@ -211,7 +122,7 @@ appModule.service('CounterDataService', function() {
 
     this.getCounterById = function( unitId ){
         //return _getCounterById( counterId );
-        var unit = _counterDataObj[ unitId ];
+        var unit = _unitsById[ unitId ];
         if (!unit){
             return null;
         }
@@ -231,23 +142,22 @@ appModule.service('CounterDataService', function() {
     };
 
     this.unselectCounter = function( counterData ){
-        counterData.isSelected = false;
+        //counterData.isSelected = false;
     };
 
-    this.selectCounter = function( counterData ){
-        // make this counter selected
-        // return any counters that lost the selection
-        var lostSelectionArr = [];
+    this.unselectAllOtherUnits = function( counterData, bWasServerEvent ){
+        // deselect any counters besides the current that have lost the selection
         var curSelectedCounters = _getSelectedCounters();
         for (var x=0; x<curSelectedCounters.length; x++){
             var cd = curSelectedCounters[x];
             if (cd!=counterData){
-                cd.isSelected = false;
-                lostSelectionArr.push( _that.getUnit( cd.id ) );
+                //cd.isSelected = false;
+                var unit = _that.getUnit( cd.id );
+                unit.select( false, bWasServerEvent );//only need to share which unit was selected and clients can figure out which ones are not...
+                //lostSelectionArr.push( _that.getUnit( cd.id ) );
             }
         }
-        counterData.isSelected = true;
-        return lostSelectionArr;
+
     };
 
     var _getUnitsInFormation = function( formationId ){
@@ -261,5 +171,28 @@ appModule.service('CounterDataService', function() {
         return formationCounters;
     };
 
+    var _onNewCounterDataFromServer = function( serverObj ){
+        if ( !serverObj) return;
+        if (serverObj.error || !serverObj.resultArr ){
+            // HANDLE ERROR...
+        }
+        else {
+            _counterDataArr = serverObj.resultArr[0].counters;
+            _initializeUnits();
+        }
+    };
+
+    // RESPOND WHEN USER LOGS IN TO SERVER BY FETCHING COUNTER DATA....
+    var _cleanMeUp_UserLoggedInFn = $rootScope.$on('user_logged_into_client', function(){
+        // GET COUNTER DATA FOR GAME....
+        var gameId = "LB_001";
+        HttpService.getCounterDataForGame( gameId, _onNewCounterDataFromServer );
+    });
+
+    var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+        // DO ALL CLEANUP HERE....
+        _cleanMeUp_AppIsClosingFn();
+        _cleanMeUp_UserLoggedInFn();
+    });
 
 });//end CounterService...

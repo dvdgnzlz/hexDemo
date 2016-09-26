@@ -1,4 +1,7 @@
-appModule.service('CounterService', function( ModalLaunchService, WebSocketService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
+
+// HANDLE THE SVG RENDERING AND USER INTERACTION FOR GAME COUNTERS/UNITS....
+
+appModule.service('CounterService', function( $timeout, WebSocketService, MainAppService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
     var _that = this;
     var _s = SvgService.svg;
     var _counterLayer = Snap('#oCounterDisplayLayer');
@@ -10,12 +13,10 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
     var _unitArr = CounterDataService.getAllUnitsOnMap();
 
 
-
-    ModalLaunchService.openLoginModal({userName:"TEST"});
-
     var onCounterMove = function(x, y, x1, y1, evt){
         // this = the counter moving....
-        if (Math.abs(x)<15 && Math.abs(y)<15) return;  // wait for the mouse to move a bit...
+        if (Math.abs(x)<15 && Math.abs(y)<15) 
+            return;  // wait for the mouse to move a bit...
         var counterSvg = this;
         var counterId = counterSvg.data("counterId");
         var unit = CounterDataService.getUnit( counterId );
@@ -23,12 +24,12 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
         var targetSvg = evt.target;
         var hexID = targetSvg.id;
         var newHexAbsPoint = null;
-        
+
         MenuService.clearMenus();
-        
+
         if (unit && !unit.isMoving() ){
             unit.isMoving(true);
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
         }
 
         if (hexID.substr(0,7)=="hexSvg_") {
@@ -36,7 +37,7 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
         }
         else if ( Snap(targetSvg).node.parentElement.id.substr(0,3)=="CTR" ){
             var counterId = Snap(Snap(targetSvg).node.parentElement).data("counterId");
-            targetUnit = CounterDataService.getUnit( counterId );
+            var targetUnit = CounterDataService.getUnit( counterId );
             newHexAbsPoint = targetUnit.getLocation();
         }
         else {
@@ -46,7 +47,7 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
 
         var oldAbsPoint = unit.getLocation();
         var hexPt = HexService.getHexCenterPoint( newHexAbsPoint.x, newHexAbsPoint.y );
-        
+
         var unit = CounterDataService.getUnit( unit.getId() );
         var svgRendering = unit.getRendering();
         if ( svgRendering ){
@@ -62,6 +63,7 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
         rect.attr({ opacity:0.3, fill:'green'});
     };  
      
+
     var onCounterStartMove = function(x){
         // this = the counter moving....
         //console.log("MOVE START");
@@ -75,19 +77,21 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
         for (var x=0; x<counterIdArr.length; x++){
             var counterId = counterIdArr[x];
             var unit = CounterDataService.getUnit( counterId );
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
+            unit.render();
         }
     };
 
-    var moveCounter = function( unit, fromAbsPoint, toAbsPoint ){
+    var moveCounter = function( unit, fromAbsPoint, toAbsPoint, bWasServerEvent ){// bWasServerEvent=came from server event...
         //REMOVE COUNTER FROM OLD HEX...
         MapDataService.removeCounterFromHex( unit.getId(), fromAbsPoint.x, fromAbsPoint.y );
         renderCountersInHex( fromAbsPoint.x, fromAbsPoint.y);//refresh old hex...
         // ADD COUNTER TO NEW HEX...
-        unit.setLocation( toAbsPoint );
+        unit.setLocation( toAbsPoint, bWasServerEvent );
         var hexId = MapDataService.addCounterToHex( unit.getId(), toAbsPoint.x, toAbsPoint.y );
         renderCountersInHex( toAbsPoint.x, toAbsPoint.y);
     };
+
 
     var onCounterEndMove = function( evt ){
         // this = the counter moving....
@@ -111,16 +115,16 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
             newHexAbsPoint = new Point( targetCounterData.hexX, targetCounterData.hexY );
         }
         else {
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
             return; // if the counter is dropped on something other than hex, fail for now....
         }
 
         var oldAbsPoint = unit.getLocation();
         if ( oldAbsPoint.isEqualTo( newHexAbsPoint )) {
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
             return;
         }
-        moveCounter( unit, oldAbsPoint, newHexAbsPoint ); // move from old pos to new...
+        moveCounter( unit, oldAbsPoint, newHexAbsPoint, false ); // move from old pos to new...
     };
 
     var _removeCounterSvg = function( unit ){
@@ -141,17 +145,24 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
 
 
 
-    var _selectCounter = function( unit ){
+    var _selectCounter = function( unit, bWasServerEvent ){
         // make this counter selected
-        var unitsThatLostSelection = unit.select( true );
-        for (var x=0; x<unitsThatLostSelection.length; x++){
-            _that.renderCounter( unitsThatLostSelection[x]);
-        }
-        _that.renderCounter( unit );
-        
+        //var unitsThatLostSelection = unit.select( true, bWasServerEvent );
+        unit.select( true, bWasServerEvent );
+        // for (var x=0; x<unitsThatLostSelection.length; x++){
+        //     //_that.renderCounter( unitsThatLostSelection[x]);
+        // }
+        //_that.renderCounter( unit );
+
         var costArr = MapRoutingService.getMovementCostArray( unit, unit.getLocation() );
-        WebSocketService.sendMessage( "counter_selected", unit.getId() );
+        };
+
+        var _deactivateUnit = function( unit, bWasServerEvent ){
+        unit.select( false, bWasServerEvent );
+        //_that.renderCounter( unit );
     };
+
+
 
     var _getUnitsInFormation = function( formationId ){
         // var formationCounters = [];
@@ -177,35 +188,33 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
     };
 
 
-    var _deactivateUnit = function( unit ){
-        unit.select( false );
-        _that.renderCounter( unit );
-    };
 
 
     var _onClickUnit = function( unit, menuX, menuY ){
+        console.log( "CounterService._onClickUnit " + unit.getId() );
         MenuService.clearMenus();
         if (MenuService.isOpenToContext( unit )){
+            console.log("Not rendering menus, as this unit is already selected");
             return;
         }
         if ( unit.isSelected() ){
-           MenuService.addMenu( "End activation", function(){
-                _deactivateUnit( unit );
+            MenuService.addMenu( "End activation", function($event){
+                //$event.stopPropagation();
+                _deactivateUnit( unit, false );
            });
         }
         else {
-            MenuService.addMenu( "Activate unit", function(){
-                _selectCounter(unit);
+            MenuService.addMenu( "Activate unit", function($event){
+                //$event.stopPropagation();
+                _selectCounter(unit, false ); // let the message select the unit...
             });
         }
         MenuService.renderMenus( "Options for " + unit.getLabel() + ":", menuX, menuY, unit );
-        //alert('here');
-        //_hilightFormationHexes("2 Arm"); // TEST OF FUNCTION....
-
     };
 
 
-    this.renderCounter = function( unit ){        
+    this.renderCounter = function( unit ){     
+        console.log( "CounterService.renderCounter " + unit.getId() );   
         _removeCounterSvg( unit );
         var unitPos = unit.getLocation();
 
@@ -289,11 +298,67 @@ appModule.service('CounterService', function( ModalLaunchService, WebSocketServi
         }
     };//end fn...  
 
-    // DO INITIAL RENDERING OF UNITS....
-    for (var x=0; x<_unitArr.length; x++){
-        var unit = _unitArr[x];
-        var unitId =  unit.getId();
-        this.renderCounter(unit);
-        var hexId = MapDataService.addCounterToHex( unit.getId(), unit.getLocation().x, unit.getLocation().y );
-    }
+
+        // var _cleanMeUp_onCounterDataChangedFn = $rootScope.$on('counter_data_changed', function( evt, dataObj ){
+        //     // ANOTHER CLIENT HAS MODIFIED A COUNTER.  GET THEM IN SYNC....
+        //     var cd = dataObj.counterData;
+        //     var unitId = cd.id;
+        //     var unit = CounterDataService.getUnit( unitId );
+        //     var propertyChanged = dataObj.changedProperty;
+        //     if (propertyChanged==="location"){
+        //         var oldLoc = unit.getLocation();
+        //         var newLoc = new Point( cd.hexX, cd.hexY );
+        //         moveCounter( unit, oldLoc, newLoc, true );
+        //     }
+        //     else if (propertyChanged==="selected"){
+        //         var isSelected = cd.isSelected;
+        //         if (isSelected){
+        //             _selectCounter( unit, true );
+        //         }
+        //         else {
+        //             _deactivateUnit( unit, true );
+        //         }
+        //     }
+        // });
+
+    var _onCounterDataChangedFn = function( evt, dataObj ){
+        // ANOTHER CLIENT HAS MODIFIED A COUNTER.  GET THEM IN SYNC....
+        var cd = dataObj.counterData;
+        var unitId = cd.id;
+        var unit = CounterDataService.getUnit( unitId );
+        var propertyChanged = dataObj.changedProperty;
+        if (propertyChanged==="location"){
+            var oldLoc = unit.getLocation();
+            var newLoc = new Point( cd.hexX, cd.hexY );
+            moveCounter( unit, oldLoc, newLoc, true );
+        }
+        else if (propertyChanged==="selected"){
+            var isSelected = cd.isSelected;
+            if (isSelected){
+                _selectCounter( unit, true );
+            }
+            else {
+                _deactivateUnit( unit, true );
+            }
+        }
+    };
+
+    // RESPOND WHEN COUNTER DATA HAS LOADED BY DOING INITIAL RENDERING OF UNITS....
+    var _CounterDataLoadedFn = function(){
+        // DO INITIAL RENDERING OF UNITS...
+        _unitArr = CounterDataService.getAllUnitsOnMap();
+        for (var x=0; x<_unitArr.length; x++){
+            var unit = _unitArr[x];
+            var unitId =  unit.getId();
+            unit.setRenderFunction( _that.renderCounter );
+            var hexId = MapDataService.addCounterToHex( unit.getId(), unit.getLocation().x, unit.getLocation().y );
+        }
+    };
+
+    // LISTEN TO ROOTSCOPE IN A WAY THAT CLEANS UP AFTER ITSELF....
+    MainAppService.listenForRootScopeMsg( 'counter_data_changed', _onCounterDataChangedFn );
+    MainAppService.listenForRootScopeMsg( 'counter_data_has_loaded', _CounterDataLoadedFn );
+
+
+
 });//end CounterService...

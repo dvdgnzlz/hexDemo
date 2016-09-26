@@ -1,5 +1,5 @@
 
-appModule.service('MainAppService', function( SvgService, HexService, $timeout, $http, $window ) {
+appModule.service('MainAppService', function( SvgService, HexService, $timeout, $http, $window, $rootScope ) {
 	//console.log("MainAppService");
 	var _that = this;
 	var _top = 0;
@@ -46,4 +46,22 @@ appModule.service('MainAppService', function( SvgService, HexService, $timeout, 
 	HexService.setMainAppService(this);
 	onWinResize( );
 	onWinScroll();
+
+
+	// ROOTSCOPE EVENTS TRACKED AND CLEANED UP HERE....
+  var _cleanUpFnArray = [];
+  var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+      // DO ALL CLEANUP HERE....
+      for (var x=0;x<_cleanUpFnArray.length; x++){
+      	_cleanUpFnArray[x](); // call the function....
+      }
+      _cleanMeUp_AppIsClosingFn();
+  });
+
+  this.listenForRootScopeMsg=function( msgName, callback ){
+  	var cleanUpFn = $rootScope.$on( msgName, callback );
+  	_cleanUpFnArray.push( cleanUpFn ); // add the function to the list that will get cleaned when the app closes....
+  }
+
+
 });

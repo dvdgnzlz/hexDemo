@@ -8,12 +8,14 @@ appModule.controller('MenuController', function( MainAppService, GameStateServic
 	$scope.menuTitle = "";
 	//$scope.$watch("$scope.menuDefs");
   $scope.toggled = function(isOpen) {
+  	//console.log( "MenuController.toggled " + isOpen );
   	$scope.isMenuOpen = isOpen;
   	MenuService.setStatus( isOpen );//let the service know whether it is showing or not....
-    console.log('Dropdown is now: ', $scope.isMenuOpen);
+    //console.log('Dropdown is now: ', $scope.isMenuOpen);
   };
 
 	var _renderMenus = function( evt, screenPt ){
+		//console.log( "MenuController._renderMenus");
 		$scope.title = MenuService.getTitle();
 		$scope.menuPos = screenPt;
 		$scope.menuDefs = MenuService.getMenuDefs();
@@ -21,6 +23,7 @@ appModule.controller('MenuController', function( MainAppService, GameStateServic
 		$scope.$digest();
 	};
 	var _hideMenus = function( ){
+		//console.log( "MenuController._hideMenus");
 		$scope.isMenuOpen = false;
 		$scope.$digest();
 	};

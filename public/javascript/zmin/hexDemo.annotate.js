@@ -15896,51 +15896,53 @@ function Point( x, y ){
 
 
 
-var appModule = angular.module('App', [ 'ui.bootstrap' ]);
-
-
-
-
-
-
-// TRACK USER ACCOUNT INFORMATION HERE....
-appModule.service("AccountService", ["$uibModal", function( $uibModal ){
-
-}]);
-
-
-
-
-// CALLED FROM main.jade.  Initializes MainAppService, which is where most of the game init occurs....
-appModule.controller('AppController', ["MainAppService", "GameStateService", "SvgService", "CounterService", "$scope", "MenuService", function( MainAppService, GameStateService, SvgService, CounterService, $scope, MenuService ){   
-	//console.log( 'AppController ');
-}]);
 // DATA MODEL FOR UNITS/COUNTERS IN THE GAME....
 
 function Unit( cData, CounterDataService ){
+    var _that = this;
     var _rendering = null; // SVG for this object...
+    var _myRenderFunction = null;
+
     this.getCounterData = function(){
         return cData;
+    };
+
+    this.setRenderFunction=function( renderFn ){
+        _myRenderFunction = renderFn;
+        _that.render();//render myself....
+    };
+
+    this.render = function(){
+        if (_myRenderFunction){
+            _myRenderFunction(_that);
+        }
     };
 
     this.isSelected = function(){
         return cData.isSelected;
     };
-    this.select = function( bIsSelected ){
+    this.select = function( bIsSelected, bWasServerEvent ){
+        //var newlyUnselectedCounters = [];
+        console.log( "Unit.select " + bIsSelected );
         if (bIsSelected == false ){
             cData.isSelected = false;
-            return [];
         }
         else {
             cData.isSelected = true;
-            var newlyUnselectedCounters = CounterDataService.selectCounter( cData );
-            return newlyUnselectedCounters;
+            //newlyUnselectedCounters = CounterDataService.selectCounter( cData, bWasServerEvent );
+            CounterDataService.unselectAllOtherUnits( cData, bWasServerEvent );
         }
+        if (!bWasServerEvent){
+            CounterDataService.unitPropertyHasChanged( "selected", cData );
+        }
+        _that.render();
+        //return newlyUnselectedCounters;
     }
     this.isMoving = function( bIsMoving ){
         // RETURN STATUS OF isMoving ATTRIBUTE...
         if (bIsMoving==true || bIsMoving==false){
             cData.isMoving = bIsMoving;
+            //_that.render();
         }
         return cData.isMoving;
     };
@@ -15984,13 +15986,17 @@ function Unit( cData, CounterDataService ){
         if (cData.hexX==null) return null;
         return new Point( cData.hexX, cData.hexY );
     };
-    this.setLocation = function( point ){
+    this.setLocation = function( point, bWasServerEvent ){
         if (!point){
             cData.hexX = null;
             cData.hexY = null;
         }
         cData.hexX = point.x;
         cData.hexY = point.y;
+        if (!bWasServerEvent){
+            CounterDataService.unitPropertyHasChanged( "location", cData );
+        }
+        _that.render();
     };
     this.isAssaultUnit = function(){
         var side = cData.sides[ cData.side ];
@@ -16025,66 +16031,166 @@ function Unit( cData, CounterDataService ){
 };
 
 
-appModule.service('CounterDataService', function() {
+var appModule = angular.module('App', [ 'ui.bootstrap' ]);
+
+
+
+// TRACK USER ACCOUNT INFORMATION HERE....
+appModule.service("AccountService", ["$rootScope", "ModalLaunchService", "HttpService", "WebSocketService", function( $rootScope, ModalLaunchService, HttpService, WebSocketService ){
+	var _that = this;
+	var _isUserLoggedIn = false;
+	var _userName = "";
+	var _email = "";
+	var _activeGamesForUser = null;
+
+	var _userHasLoggedIn = function(){
+		$rootScope.emit("user_logged_into_client");
+	};
+
+	var _userAccountInfoCallback = function( params ){
+		//  USER DATA HAS ARRIVED FROM THE SERVER...
+		console.log("_userAccountInfoCallback");
+		console.log( params );
+		if (!params.error && params.userData  ){
+			_userName = params.userData.userName;
+			_email = params.userData.email;
+			_activeGamesForUser = params.activeGames;
+			_isUserLoggedIn = true;
+			console.log("=== USER IS LOGGED IN ");
+			// TELL SOCKET SERVICE WHO HAS LOGGED IN...
+			WebSocketService.sendMessage( "user_login", _userName ); 
+			$rootScope.$emit("user_logged_into_client");// OK TO GRAB DATA FROM SERVER NOW....
+		}
+		else {
+			// PROBLEM LOGGING IN....
+			console.log("PROBLEM LOGGING IN");
+			_getUserAccountInfo();
+		}
+	};
+
+
+	// LAUNCH LOG IN MODAL DIALOG....
+	var _getUserAccountInfo = function(){
+		var _loginModalCallback = function( params ){
+			console.log( "RETURN FROM DIALOG" );
+			console.log( params );
+			if ( !params ) return; // no data (user canceled)....
+			var userName = params.userName;
+			if (userName.trim().length>0){
+				// GET USER INFO FROM SERVER....
+				HttpService.getUserAccountInfo( userName, _userAccountInfoCallback );
+			}
+		};
+		var modalParams = {userName:"dvdgnzlz"};
+  	ModalLaunchService.openLoginModal( modalParams, _loginModalCallback );
+	};
+
+
+
+
+
+	var _cleanMeUp_WebSocketConnectedFn = $rootScope.$on('web_socket_connected', function(){
+		// WE JUST GOT A CONNECTION WITH THE SERVER.  LOG IN.
+		if (!_isUserLoggedIn){
+			_getUserAccountInfo();
+		}
+		else {
+			// RESTORE ASSOCIATION WITH CURRENT USER ON THE SERVER....
+			WebSocketService.sendMessage( "user_login", _userName ); 
+		}
+	});
+
+	var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+		// DO ALL CLEANUP HERE....
+		socket.emit("app_is_closing", null);
+		_cleanMeUp_AppIsClosingFn();
+		_cleanMeUp_WebSocketConnectedFn();
+	});
+
+}]);
+
+
+
+appModule.service('CounterDataService', ["$rootScope", "HttpService", "WebSocketService", function( $rootScope, HttpService, WebSocketService ) {
     var _that = this;
     // SET UP COUNTERS FOR THE GAME....
     var _counterDataArr = [];
-    var _counterDataObj = {}; // store value under key of id....
-    _counterDataArr.push( { id:"CTR_UNIT_29_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmorLogo",
-        label:"23 Hus", formation:"2 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:true, AV:5, AR: 4, RNG:2, MA:16, moveType:"TACTICAL"}
-        ],
-        hexX:4, hexY: 3 } );
-    _counterDataArr.push( { id:"CTR_UNIT_30_ARM", faction: "ALLIES", country:"UK", class:"UK_COUNTER", logoId:"oInfantryLogo", xxxisSelected:true,
-        label:"II/753", formation:"29 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:true, AV:3, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:5, hexY: 3 } );
-    // HQ 
-    _counterDataArr.push( { id:"CTR_HQ_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oHQLogo",
-        label:"HQ", formation:"2 Arm", maxSteps:0, 
-        curSteps: 0, unitType:"HQ", side:0,
-        sides:[
-            {assault:false, CR:5, MA:14, moveType:"TRUCK"}
-        ],
-        hexX:2, hexY: 3} );   
-    // COMBAT TRAIN
-    _counterDataArr.push( { id:"CTR_TRAIN_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oTrainLogo",
-        label:"TRAIN", formation:"2 Arm", maxSteps:0, 
-        curSteps: 0, unitType:"COMBAT_TRAIN", side:0,
-        sides:[
-            {ghost:false},{ghost:true}
-        ],
-        hexX:1, hexY: 1} );  
-    _counterDataArr.push( { id:"CTR_UNIT_HOLZ", faction: "GERMAN", country:"GE", class:"GE_COUNTER", 
-        label:"Holz", formation:"29 Arm", maxSteps:6, 
-        curSteps: 5, unitType:"Armor", side:0,
-        sides:[
-            {assault:false, AV:2, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:5, hexY: 5} );    
+    var _unitsById = {}; // store value under key of id....
+    // _counterDataArr.push( { id:"CTR_UNIT_29_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmorLogo",
+    //     label:"23 Hus", formation:"2 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:true, AV:5, AR: 4, RNG:2, MA:16, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:4, hexY: 3 } );
+    // _counterDataArr.push( { id:"CTR_UNIT_30_ARM", faction: "ALLIES", country:"UK", class:"UK_COUNTER", logoId:"oInfantryLogo", xxxisSelected:true,
+    //     label:"II/753", formation:"29 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:true, AV:3, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:5, hexY: 3 } );
+    // // HQ 
+    // _counterDataArr.push( { id:"CTR_HQ_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oHQLogo",
+    //     label:"HQ", formation:"2 Arm", maxSteps:0, 
+    //     curSteps: 0, unitType:"HQ", side:0,
+    //     sides:[
+    //         {assault:false, CR:5, MA:14, moveType:"TRUCK"}
+    //     ],
+    //     hexX:2, hexY: 3} );   
+    // // COMBAT TRAIN
+    // _counterDataArr.push( { id:"CTR_TRAIN_2_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oTrainLogo",
+    //     label:"TRAIN", formation:"2 Arm", maxSteps:0, 
+    //     curSteps: 0, unitType:"COMBAT_TRAIN", side:0,
+    //     sides:[
+    //         {ghost:false},{ghost:true}
+    //     ],
+    //     hexX:1, hexY: 1} );  
+    // _counterDataArr.push( { id:"CTR_UNIT_HOLZ", faction: "GERMAN", country:"GE", class:"GE_COUNTER", 
+    //     label:"Holz", formation:"29 Arm", maxSteps:6, 
+    //     curSteps: 5, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:false, AV:2, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:5, hexY: 5} );    
 
-    _counterDataArr.push( { id:"CTR_UNIT_32_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmInfLogo",
-        label:"3/67", formation:"2 Arm", maxSteps:6, 
-        curSteps: 6, unitType:"Armor", side:0,
-        sides:[
-            {assault:false, AV:5, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
-        ],
-        hexX:3, hexY: 3} );   
+    // _counterDataArr.push( { id:"CTR_UNIT_32_ARM", faction: "ALLIES", country:"US", class:"US_COUNTER", logoId:"oArmInfLogo",
+    //     label:"3/67", formation:"2 Arm", maxSteps:6, 
+    //     curSteps: 6, unitType:"Armor", side:0,
+    //     sides:[
+    //         {assault:false, AV:5, AR: 4, RNG:2, MA:14, moveType:"TACTICAL"}
+    //     ],
+    //     hexX:3, hexY: 3} );   
 
-    for( var x=0; x<_counterDataArr.length; x++){
-        var cd = _counterDataArr[x];
-        var unit = new Unit( cd, _that );
-        _counterDataObj[cd.id] = unit; // store each object by id for easy retrieval...
-    }
+
+    var _initializeUnits = function(){
+        for( var x=0; x<_counterDataArr.length; x++){
+            var cd = _counterDataArr[x];
+            var unit = new Unit( cd, _that );
+            _unitsById[cd.id] = unit; // store each object by id for easy retrieval...
+        }
+        $rootScope.$emit("counter_data_has_loaded");
+    };
+
+
+
+    this.unitPropertyHasChanged = function( propertyThatChanged, counterData ){
+        console.log( "CounterDataService.unitPropertyHasChanged " + propertyThatChanged + " " + counterData.id );
+        // called by unit whenever properties change...
+        // notifiy server that unit data has changed...
+        var gameId = "LB_001";
+        //HttpService.updateCounterData( gameId, counterData );
+        var dataObj = {gameId: gameId, counterData: counterData, changedProperty: propertyThatChanged };
+        var test = function(){
+            console.log("THE SERVER HAS STORED THE DATA");
+        }
+        WebSocketService.sendMessage( "counter_data_changed", dataObj, test);
+    };
+
 
 
     this.getUnit = function( unitId ){
-        var unit = _counterDataObj[unitId];
+        var unit = _unitsById[unitId];
         if (!unit) return null;
         return unit;
     };
@@ -16128,7 +16234,7 @@ appModule.service('CounterDataService', function() {
 
     this.getCounterById = function( unitId ){
         //return _getCounterById( counterId );
-        var unit = _counterDataObj[ unitId ];
+        var unit = _unitsById[ unitId ];
         if (!unit){
             return null;
         }
@@ -16148,23 +16254,22 @@ appModule.service('CounterDataService', function() {
     };
 
     this.unselectCounter = function( counterData ){
-        counterData.isSelected = false;
+        //counterData.isSelected = false;
     };
 
-    this.selectCounter = function( counterData ){
-        // make this counter selected
-        // return any counters that lost the selection
-        var lostSelectionArr = [];
+    this.unselectAllOtherUnits = function( counterData, bWasServerEvent ){
+        // deselect any counters besides the current that have lost the selection
         var curSelectedCounters = _getSelectedCounters();
         for (var x=0; x<curSelectedCounters.length; x++){
             var cd = curSelectedCounters[x];
             if (cd!=counterData){
-                cd.isSelected = false;
-                lostSelectionArr.push( _that.getUnit( cd.id ) );
+                //cd.isSelected = false;
+                var unit = _that.getUnit( cd.id );
+                unit.select( false, bWasServerEvent );//only need to share which unit was selected and clients can figure out which ones are not...
+                //lostSelectionArr.push( _that.getUnit( cd.id ) );
             }
         }
-        counterData.isSelected = true;
-        return lostSelectionArr;
+
     };
 
     var _getUnitsInFormation = function( formationId ){
@@ -16178,10 +16283,36 @@ appModule.service('CounterDataService', function() {
         return formationCounters;
     };
 
+    var _onNewCounterDataFromServer = function( serverObj ){
+        if ( !serverObj) return;
+        if (serverObj.error || !serverObj.resultArr ){
+            // HANDLE ERROR...
+        }
+        else {
+            _counterDataArr = serverObj.resultArr[0].counters;
+            _initializeUnits();
+        }
+    };
 
-});//end CounterService...
+    // RESPOND WHEN USER LOGS IN TO SERVER BY FETCHING COUNTER DATA....
+    var _cleanMeUp_UserLoggedInFn = $rootScope.$on('user_logged_into_client', function(){
+        // GET COUNTER DATA FOR GAME....
+        var gameId = "LB_001";
+        HttpService.getCounterDataForGame( gameId, _onNewCounterDataFromServer );
+    });
 
-appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "CounterDataService", "HexService", "SvgService", "GameStateService", "MapDataService", "MenuService", "MapRoutingService", function( ModalLaunchService, WebSocketService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
+    var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+        // DO ALL CLEANUP HERE....
+        _cleanMeUp_AppIsClosingFn();
+        _cleanMeUp_UserLoggedInFn();
+    });
+
+}]);//end CounterService...
+
+
+// HANDLE THE SVG RENDERING AND USER INTERACTION FOR GAME COUNTERS/UNITS....
+
+appModule.service('CounterService', ["$timeout", "WebSocketService", "MainAppService", "CounterDataService", "HexService", "SvgService", "GameStateService", "MapDataService", "MenuService", "MapRoutingService", function( $timeout, WebSocketService, MainAppService, CounterDataService, HexService, SvgService, GameStateService, MapDataService, MenuService, MapRoutingService ) {
     var _that = this;
     var _s = SvgService.svg;
     var _counterLayer = Snap('#oCounterDisplayLayer');
@@ -16193,12 +16324,10 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
     var _unitArr = CounterDataService.getAllUnitsOnMap();
 
 
-
-    ModalLaunchService.openLoginModal({userName:"TEST"});
-
     var onCounterMove = function(x, y, x1, y1, evt){
         // this = the counter moving....
-        if (Math.abs(x)<15 && Math.abs(y)<15) return;  // wait for the mouse to move a bit...
+        if (Math.abs(x)<15 && Math.abs(y)<15) 
+            return;  // wait for the mouse to move a bit...
         var counterSvg = this;
         var counterId = counterSvg.data("counterId");
         var unit = CounterDataService.getUnit( counterId );
@@ -16206,12 +16335,12 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
         var targetSvg = evt.target;
         var hexID = targetSvg.id;
         var newHexAbsPoint = null;
-        
+
         MenuService.clearMenus();
-        
+
         if (unit && !unit.isMoving() ){
             unit.isMoving(true);
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
         }
 
         if (hexID.substr(0,7)=="hexSvg_") {
@@ -16219,7 +16348,7 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
         }
         else if ( Snap(targetSvg).node.parentElement.id.substr(0,3)=="CTR" ){
             var counterId = Snap(Snap(targetSvg).node.parentElement).data("counterId");
-            targetUnit = CounterDataService.getUnit( counterId );
+            var targetUnit = CounterDataService.getUnit( counterId );
             newHexAbsPoint = targetUnit.getLocation();
         }
         else {
@@ -16229,7 +16358,7 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
 
         var oldAbsPoint = unit.getLocation();
         var hexPt = HexService.getHexCenterPoint( newHexAbsPoint.x, newHexAbsPoint.y );
-        
+
         var unit = CounterDataService.getUnit( unit.getId() );
         var svgRendering = unit.getRendering();
         if ( svgRendering ){
@@ -16245,6 +16374,7 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
         rect.attr({ opacity:0.3, fill:'green'});
     };  
      
+
     var onCounterStartMove = function(x){
         // this = the counter moving....
         //console.log("MOVE START");
@@ -16258,19 +16388,21 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
         for (var x=0; x<counterIdArr.length; x++){
             var counterId = counterIdArr[x];
             var unit = CounterDataService.getUnit( counterId );
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
+            unit.render();
         }
     };
 
-    var moveCounter = function( unit, fromAbsPoint, toAbsPoint ){
+    var moveCounter = function( unit, fromAbsPoint, toAbsPoint, bWasServerEvent ){// bWasServerEvent=came from server event...
         //REMOVE COUNTER FROM OLD HEX...
         MapDataService.removeCounterFromHex( unit.getId(), fromAbsPoint.x, fromAbsPoint.y );
         renderCountersInHex( fromAbsPoint.x, fromAbsPoint.y);//refresh old hex...
         // ADD COUNTER TO NEW HEX...
-        unit.setLocation( toAbsPoint );
+        unit.setLocation( toAbsPoint, bWasServerEvent );
         var hexId = MapDataService.addCounterToHex( unit.getId(), toAbsPoint.x, toAbsPoint.y );
         renderCountersInHex( toAbsPoint.x, toAbsPoint.y);
     };
+
 
     var onCounterEndMove = function( evt ){
         // this = the counter moving....
@@ -16294,16 +16426,16 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
             newHexAbsPoint = new Point( targetCounterData.hexX, targetCounterData.hexY );
         }
         else {
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
             return; // if the counter is dropped on something other than hex, fail for now....
         }
 
         var oldAbsPoint = unit.getLocation();
         if ( oldAbsPoint.isEqualTo( newHexAbsPoint )) {
-            _that.renderCounter( unit );
+            //_that.renderCounter( unit );
             return;
         }
-        moveCounter( unit, oldAbsPoint, newHexAbsPoint ); // move from old pos to new...
+        moveCounter( unit, oldAbsPoint, newHexAbsPoint, false ); // move from old pos to new...
     };
 
     var _removeCounterSvg = function( unit ){
@@ -16324,17 +16456,24 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
 
 
 
-    var _selectCounter = function( unit ){
+    var _selectCounter = function( unit, bWasServerEvent ){
         // make this counter selected
-        var unitsThatLostSelection = unit.select( true );
-        for (var x=0; x<unitsThatLostSelection.length; x++){
-            _that.renderCounter( unitsThatLostSelection[x]);
-        }
-        _that.renderCounter( unit );
-        
+        //var unitsThatLostSelection = unit.select( true, bWasServerEvent );
+        unit.select( true, bWasServerEvent );
+        // for (var x=0; x<unitsThatLostSelection.length; x++){
+        //     //_that.renderCounter( unitsThatLostSelection[x]);
+        // }
+        //_that.renderCounter( unit );
+
         var costArr = MapRoutingService.getMovementCostArray( unit, unit.getLocation() );
-        WebSocketService.sendMessage( "counter_selected", unit.getId() );
+        };
+
+        var _deactivateUnit = function( unit, bWasServerEvent ){
+        unit.select( false, bWasServerEvent );
+        //_that.renderCounter( unit );
     };
+
+
 
     var _getUnitsInFormation = function( formationId ){
         // var formationCounters = [];
@@ -16360,35 +16499,33 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
     };
 
 
-    var _deactivateUnit = function( unit ){
-        unit.select( false );
-        _that.renderCounter( unit );
-    };
 
 
     var _onClickUnit = function( unit, menuX, menuY ){
+        console.log( "CounterService._onClickUnit " + unit.getId() );
         MenuService.clearMenus();
         if (MenuService.isOpenToContext( unit )){
+            console.log("Not rendering menus, as this unit is already selected");
             return;
         }
         if ( unit.isSelected() ){
-           MenuService.addMenu( "End activation", function(){
-                _deactivateUnit( unit );
+            MenuService.addMenu( "End activation", function($event){
+                //$event.stopPropagation();
+                _deactivateUnit( unit, false );
            });
         }
         else {
-            MenuService.addMenu( "Activate unit", function(){
-                _selectCounter(unit);
+            MenuService.addMenu( "Activate unit", function($event){
+                //$event.stopPropagation();
+                _selectCounter(unit, false ); // let the message select the unit...
             });
         }
         MenuService.renderMenus( "Options for " + unit.getLabel() + ":", menuX, menuY, unit );
-        //alert('here');
-        //_hilightFormationHexes("2 Arm"); // TEST OF FUNCTION....
-
     };
 
 
-    this.renderCounter = function( unit ){        
+    this.renderCounter = function( unit ){     
+        console.log( "CounterService.renderCounter " + unit.getId() );   
         _removeCounterSvg( unit );
         var unitPos = unit.getLocation();
 
@@ -16472,13 +16609,69 @@ appModule.service('CounterService', ["ModalLaunchService", "WebSocketService", "
         }
     };//end fn...  
 
-    // DO INITIAL RENDERING OF UNITS....
-    for (var x=0; x<_unitArr.length; x++){
-        var unit = _unitArr[x];
-        var unitId =  unit.getId();
-        this.renderCounter(unit);
-        var hexId = MapDataService.addCounterToHex( unit.getId(), unit.getLocation().x, unit.getLocation().y );
-    }
+
+        // var _cleanMeUp_onCounterDataChangedFn = $rootScope.$on('counter_data_changed', function( evt, dataObj ){
+        //     // ANOTHER CLIENT HAS MODIFIED A COUNTER.  GET THEM IN SYNC....
+        //     var cd = dataObj.counterData;
+        //     var unitId = cd.id;
+        //     var unit = CounterDataService.getUnit( unitId );
+        //     var propertyChanged = dataObj.changedProperty;
+        //     if (propertyChanged==="location"){
+        //         var oldLoc = unit.getLocation();
+        //         var newLoc = new Point( cd.hexX, cd.hexY );
+        //         moveCounter( unit, oldLoc, newLoc, true );
+        //     }
+        //     else if (propertyChanged==="selected"){
+        //         var isSelected = cd.isSelected;
+        //         if (isSelected){
+        //             _selectCounter( unit, true );
+        //         }
+        //         else {
+        //             _deactivateUnit( unit, true );
+        //         }
+        //     }
+        // });
+
+    var _onCounterDataChangedFn = function( evt, dataObj ){
+        // ANOTHER CLIENT HAS MODIFIED A COUNTER.  GET THEM IN SYNC....
+        var cd = dataObj.counterData;
+        var unitId = cd.id;
+        var unit = CounterDataService.getUnit( unitId );
+        var propertyChanged = dataObj.changedProperty;
+        if (propertyChanged==="location"){
+            var oldLoc = unit.getLocation();
+            var newLoc = new Point( cd.hexX, cd.hexY );
+            moveCounter( unit, oldLoc, newLoc, true );
+        }
+        else if (propertyChanged==="selected"){
+            var isSelected = cd.isSelected;
+            if (isSelected){
+                _selectCounter( unit, true );
+            }
+            else {
+                _deactivateUnit( unit, true );
+            }
+        }
+    };
+
+    // RESPOND WHEN COUNTER DATA HAS LOADED BY DOING INITIAL RENDERING OF UNITS....
+    var _CounterDataLoadedFn = function(){
+        // DO INITIAL RENDERING OF UNITS...
+        _unitArr = CounterDataService.getAllUnitsOnMap();
+        for (var x=0; x<_unitArr.length; x++){
+            var unit = _unitArr[x];
+            var unitId =  unit.getId();
+            unit.setRenderFunction( _that.renderCounter );
+            var hexId = MapDataService.addCounterToHex( unit.getId(), unit.getLocation().x, unit.getLocation().y );
+        }
+    };
+
+    // LISTEN TO ROOTSCOPE IN A WAY THAT CLEANS UP AFTER ITSELF....
+    MainAppService.listenForRootScopeMsg( 'counter_data_changed', _onCounterDataChangedFn );
+    MainAppService.listenForRootScopeMsg( 'counter_data_has_loaded', _CounterDataLoadedFn );
+
+
+
 }]);//end CounterService...
 
 
@@ -17146,8 +17339,68 @@ appModule.service('HexService', ["GameStateService", "SvgService", "MapDataServi
 
 
 
+// MANAGE REQUESTS TO THE SERVER HERE....
+appModule.service("HttpService", ["$uibModal", "$http", function( $uibModal, $http){
 
-appModule.service('MainAppService', ["SvgService", "HexService", "$timeout", "$http", "$window", function( SvgService, HexService, $timeout, $http, $window ) {
+
+	this.getUserAccountInfo = function( userName, callback ){
+    //console.log( "ProblemDurationService:_fnLoadProblemDurations");
+    var config={
+      method: "GET",
+      url: '/UserAccount/' ,
+      params: {userName: userName }
+    }; 
+    $http( config ).success(function(response) {
+       console.log( JSON.stringify( response ) );
+       callback( response );
+    }).error(function(err, err2, err3){
+      console.log('ERORR!');
+      console.log(err);
+      callback( {error: err } );
+    }); 		
+	}//end function...
+
+
+  this.updateCounterData = function( gameId, counterData ){
+    var config={
+      method: "POST",
+      url: '/UpdateCounter/' ,
+      data: {gameId: gameId, counterData: counterData }
+    }; 
+    $http( config ).success(function(response) {
+      console.log( "/UpdateCounter called....");
+       console.log( JSON.stringify( response ) );
+       //callback( response );
+    }).error(function(err, err2, err3){
+      console.log('ERORR!');
+      console.log(err);
+      //callback( {error: err } );
+    }); 
+  };//end function...
+
+
+
+  this.getCounterDataForGame = function( gameId, callback ){
+    var config={
+      method: "GET",
+      url: '/CounterDataForGame/' ,
+      params: {gameId: gameId }
+    }; 
+    $http( config ).success(function(response) {
+      console.log( "/CounterDataForGame returned....");
+      //console.log( JSON.stringify( response ) );
+      if (callback) callback( response );
+    }).error(function(err, err2, err3){
+      console.log('ERORR!');
+      console.log(err);
+      callback( {error: err } );
+    }); 
+  };//end function...
+
+}]);//end HttpService....
+
+
+appModule.service('MainAppService', ["SvgService", "HexService", "$timeout", "$http", "$window", "$rootScope", function( SvgService, HexService, $timeout, $http, $window, $rootScope ) {
 	//console.log("MainAppService");
 	var _that = this;
 	var _top = 0;
@@ -17194,6 +17447,24 @@ appModule.service('MainAppService', ["SvgService", "HexService", "$timeout", "$h
 	HexService.setMainAppService(this);
 	onWinResize( );
 	onWinScroll();
+
+
+	// ROOTSCOPE EVENTS TRACKED AND CLEANED UP HERE....
+  var _cleanUpFnArray = [];
+  var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+      // DO ALL CLEANUP HERE....
+      for (var x=0;x<_cleanUpFnArray.length; x++){
+      	_cleanUpFnArray[x](); // call the function....
+      }
+      _cleanMeUp_AppIsClosingFn();
+  });
+
+  this.listenForRootScopeMsg=function( msgName, callback ){
+  	var cleanUpFn = $rootScope.$on( msgName, callback );
+  	_cleanUpFnArray.push( cleanUpFn ); // add the function to the list that will get cleaned when the app closes....
+  }
+
+
 }]);
 
 
@@ -17890,8 +18161,8 @@ appModule.service('MapRoutingService', ["CounterDataService", "GameStateService"
         // HQ CAN NOT MOVE INTO ENG. ZONE
         // MSR CAN NOT PASS THROUGH ENG. ZONE
         for (var n=0; n<neigborCoordsArr.length; n++){
-            nX = neigborCoordsArr[n].x;
-            nY = neigborCoordsArr[n].y;
+            var nX = neigborCoordsArr[n].x;
+            var nY = neigborCoordsArr[n].y;
 
 
             var costObj = costArr[ nX ][ nY ]; //write results here...
@@ -18012,7 +18283,7 @@ appModule.service('MapRoutingService', ["CounterDataService", "GameStateService"
         // HQ CAN NEVER MOVE INTO EZOC...
         // UNITS MAY LEAVE EZOC, BUT MAY NOT GO FROM ONE EZOC TO ANOTHER...
         //console.log( "HERE");
-        zocArr = _getBlankRouteArray();
+        var zocArr = _getBlankRouteArray();
         for (var x=0;x<zocArr.length; x++){
             for (var y=0; y<zocArr[x].length; y++){
                 var dataObj = zocArr[x][y];
@@ -18051,7 +18322,7 @@ appModule.service('MapRoutingService', ["CounterDataService", "GameStateService"
 
 
 
-appModule.service('MenuService', ["$rootScope", function( $rootScope ){
+appModule.service('MenuService', ["$rootScope", "$timeout", function( $rootScope, $timeout ){
     console.log("MenuService");
     // RESPONSIBLE FOR HOLDING THE DATA MODEL OF ALL MENUS TO BE RENDERED BY THE UI....
     var _that = this;
@@ -18076,19 +18347,27 @@ appModule.service('MenuService', ["$rootScope", function( $rootScope ){
         return _title;
     };
     this.clearMenus = function(){
+        console.log( "MenuService.clearMenus...");
         _menuDefArr = [];
         $rootScope.$broadcast("HIDE_MENUS" );
     };
     this.renderMenus = function( title, x, y, context ){
+        console.log( "MenuService.renderMenus...");
         if (context==_context && _isOpen){
+            console.log( "Not rendering due to same context");
             _that.clearMenus();
             return;
         }
         _context = context;
         _title = title;
-        $rootScope.$broadcast("SHOW_MENUS", new Point(x,y) );
+        // IF WE DON'T PUT THIS ON A DELAY, THE MENU IMMEDIATELY HIDES (THIS SEEMS TO LET THE HIDE MESSAGE GO FIRST)....
+        $timeout( function(){
+            $rootScope.$broadcast("SHOW_MENUS", new Point(x,y) );
+        },1);
+        //$rootScope.$broadcast("SHOW_MENUS", new Point(x,y) );
     };
     this.addMenu = function( title, func ){
+        console.log( "MenuService.addMenu " + title );
         _menuDefArr.push( {"title":title, "onClickFn":func } );
     };  
 
@@ -18101,7 +18380,32 @@ appModule.service('MenuService', ["$rootScope", function( $rootScope ){
 
 // USE THIS SERVICE TO LAUNCH ALL MODAL DIALOGS....
 appModule.service("ModalLaunchService", ["$uibModal", function( $uibModal ){
-  this.openLoginModal = function ( paramObj ) {
+
+
+  var _genericOkCb = function( callback ){
+    var _genericOk = function( returnObj ){
+      console.log("MODAL OK");
+      //console.log( returnObj );
+      if(callback){
+        callback( returnObj );
+      }
+    };
+    return _genericOk; // return a function within a closure that tracks its callback fn...
+  };
+  
+
+  var _genericCancelCb = function( callback ){
+    var _genericCancel = function( ){
+      console.log('MODAL CANCEL');
+      if (callback){
+        callback( null ); //cancel....
+      }
+    };
+    return _genericCancel; // return a function within a closure that tracks its callback fn...
+  };
+
+
+  this.openLoginModal = function ( paramObj, callback ) {
     var modalInstance = $uibModal.open({
       //animation: true,
       templateUrl: 'modals/LoginModal',
@@ -18113,20 +18417,11 @@ appModule.service("ModalLaunchService", ["$uibModal", function( $uibModal ){
         params: function(){ return paramObj; }
       }
     });//end modalInstance definition...
-    
-    modalInstance.result.then(
-    	// OK CLICKED....
-    	function (returnObj) { 
-	      console.log("RETURN VALUE");
-	      console.log( returnObj );
-    	}, 
-    	// CANCEL CLICKED....
-    	function () {
-      console.log('Modal dismissed at: ' + new Date());
-    	}
-    );// end result.then...
-	};
-}]);
+    modalInstance.result.then( _genericOkCb(callback), _genericCancelCb(callback) );
+  };//end function...
+
+
+}]);//end Service...
 
 
 appModule.service("SvgService", ["GameStateService", function( GameStateService){
@@ -18213,21 +18508,81 @@ appModule.service('TerrainService', ["MapDataService", function( MapDataService 
 
 }]);
 
-appModule.service('WebSocketService', function( ) {
+appModule.service('WebSocketService', ["$rootScope", function( $rootScope ) {
 	console.log( 'WebSocketService');
+	var _isConnected = false;
+	var _socketId = "";
+
 	var socket = io();
 	//var socket = io("http://localhost:3001");
 	//var socket = io('http://localhost:3001/my-namespace', { path: '/myapp/socket.io'});
-	this.sendMessage = function( msg, data ){
-		socket.emit( msg, data );
-	}
+
+
+
+	this.sendMessage = function( msg, data, callback ){
+		if (_isConnected){
+			socket.emit( msg, data );
+			if (callback){
+				callback();
+			}
+		}
+	};
+
+
+	socket.on('user_list', function( arr ){
+		console.log("Server sent user list:")
+		console.log( arr );
+	});
+
+	socket.on('connect', function(){
+		_isConnected = true;
+		console.log( "Connected...");
+		_socketId = socket.io.engine.id;
+		console.log( "My new socket id is: " + _socketId);
+		$rootScope.$emit("web_socket_connected");
+	});
+
+	socket.on('disconnect', function () {
+		_isConnected = false;
+	  console.log('Disconnected');
+	  $rootScope.$emit("web_socket_disconnected");
+	});   
+
 
 	socket.on('server_message', function(msg){
 		console.log( "MESSAGE FROM WebSocket.... server_message" );
 		console.log( msg );
 	});
-	
-}); 
+
+
+	socket.on('counter_data_changed', function( dataObj ){
+		console.log( "MESSAGE FROM WebSocket.... counter_data_changed.  We need to update our counter with new info." );
+		console.log( dataObj );
+		$rootScope.$emit( 'counter_data_changed', dataObj );
+	});
+
+
+
+	var _cleanMeUp_AppIsClosingFn = $rootScope.$on('app_is_closing', function(){
+		// DO ALL CLEANUP HERE....
+		socket.emit("app_is_closing", null);
+		_cleanMeUp_AppIsClosingFn();
+	});
+
+
+}]); 
+// Initializes MainAppService, which is where most of the game init occurs....
+// Associated with the <BODY> of the web page, so this $scope should connect with the entire app....
+appModule.controller('AppController', ["AccountService", "MainAppService", "GameStateService", "SvgService", "CounterService", "$scope", "$rootScope", "MenuService", function( AccountService, MainAppService, GameStateService, SvgService, CounterService, $scope, $rootScope, MenuService ){   
+	//console.log( 'AppController ');
+
+
+	var _windowIsClosing = function(){
+		// INITIATE APP CLEAN UP HERE...
+		$rootScope.$emit("app_is_closing");
+	};
+	window.onbeforeunload = _windowIsClosing;
+}]);
 
 
 appModule.controller('MenuController', ["MainAppService", "GameStateService", "SvgService", "CounterService", "$scope", "MenuService", "TerrainService", function( MainAppService, GameStateService, SvgService, CounterService, $scope, MenuService, TerrainService ){   
@@ -18238,12 +18593,14 @@ appModule.controller('MenuController', ["MainAppService", "GameStateService", "S
 	$scope.menuTitle = "";
 	//$scope.$watch("$scope.menuDefs");
   $scope.toggled = function(isOpen) {
+  	//console.log( "MenuController.toggled " + isOpen );
   	$scope.isMenuOpen = isOpen;
   	MenuService.setStatus( isOpen );//let the service know whether it is showing or not....
-    console.log('Dropdown is now: ', $scope.isMenuOpen);
+    //console.log('Dropdown is now: ', $scope.isMenuOpen);
   };
 
 	var _renderMenus = function( evt, screenPt ){
+		//console.log( "MenuController._renderMenus");
 		$scope.title = MenuService.getTitle();
 		$scope.menuPos = screenPt;
 		$scope.menuDefs = MenuService.getMenuDefs();
@@ -18251,6 +18608,7 @@ appModule.controller('MenuController', ["MainAppService", "GameStateService", "S
 		$scope.$digest();
 	};
 	var _hideMenus = function( ){
+		//console.log( "MenuController._hideMenus");
 		$scope.isMenuOpen = false;
 		$scope.$digest();
 	};

@@ -47,8 +47,8 @@ appModule.service('MapRoutingService', function( CounterDataService, GameStateSe
         // HQ CAN NOT MOVE INTO ENG. ZONE
         // MSR CAN NOT PASS THROUGH ENG. ZONE
         for (var n=0; n<neigborCoordsArr.length; n++){
-            nX = neigborCoordsArr[n].x;
-            nY = neigborCoordsArr[n].y;
+            var nX = neigborCoordsArr[n].x;
+            var nY = neigborCoordsArr[n].y;
 
 
             var costObj = costArr[ nX ][ nY ]; //write results here...
@@ -169,7 +169,7 @@ appModule.service('MapRoutingService', function( CounterDataService, GameStateSe
         // HQ CAN NEVER MOVE INTO EZOC...
         // UNITS MAY LEAVE EZOC, BUT MAY NOT GO FROM ONE EZOC TO ANOTHER...
         //console.log( "HERE");
-        zocArr = _getBlankRouteArray();
+        var zocArr = _getBlankRouteArray();
         for (var x=0;x<zocArr.length; x++){
             for (var y=0; y<zocArr[x].length; y++){
                 var dataObj = zocArr[x][y];

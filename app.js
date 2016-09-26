@@ -30,7 +30,7 @@ var http = require('http');
 
 
 var https = require('https');
-
+var compression = require('compression');  // TEST 
 var express = require('express');   
 var request = require("request");//makes http requests easier...
 var DOMParser = require('xmldom').DOMParser; // work with xml strings as DOM objects....
@@ -45,6 +45,24 @@ var dbClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;  
 
 var app = express();
+//app.use(compression()); // TEST
+
+
+function shouldCompress(req, res) {
+  // BY DEFAULT, ONLY TEXT-BASED FILES ARE COMPRESSED.  NO NEED TO FILTER JPGs, PNGs, ETC.
+  console.log("============ NEW CHECK ==============");
+  console.log( req.url );
+  if (req.headers['x-no-compression']) {
+    // don't compress responses with this request header
+    return false
+  }
+
+  // fallback to standard filter function
+  return compression.filter(req, res)
+};
+app.use(compression({filter: shouldCompress}));
+
+
 app.config = config; // let the modules have access to the contents of app_config.js file....
 app.systemAlertArray = [];
 //Here we are configuring express to use body-parser as middle-ware.
@@ -159,14 +177,97 @@ var io  = require('socket.io')(http, { path: '/myapp/socket.io'}).listen(server)
 //         console.log('broadcasting my-message', data);
 //     });
 // });
+
+var _allSockets = []; 
+
+var sendCurrentUsers = function(){
+  var arr = [];
+  for (var x=0; x<_allSockets.length; x++){
+    var s = _allSockets[x];
+    var un = s.userName;
+    arr.push( {'userName':un, 'id':s.id });
+  }
+  console.log( "==== USER LIST ====");
+  console.log( arr );
+  io.emit( 'user_list', arr );
+};
+   
+
+
 io.on('connection', function(socket){
     console.log('a user connected with id %s', socket.id);
+    socket.userName = "";
+    _allSockets.push( socket );
     io.emit('server_message', socket.id );
-    socket.on('disconnect', function(){
+    for (var x=0; x<_allSockets.length; x++){
+      console.log( _allSockets[x].id );
+    }
+
+
+    socket.on('disconnect', function( data ){
       console.log('user disconnected');
+      var index = _allSockets.indexOf( socket );
+      _allSockets.splice( index, 1);//remove socket...
+      var msg = "There are " + _allSockets.length + " users left online.";
+      console.log( msg );
+      io.emit( 'server_message', msg );
+      sendCurrentUsers();
     });
-    socket.on('counter_selected', function (data) {
-        io.emit('server_message', data);
-        console.log('broadcasting my-message', data);
+
+    socket.on('user_login', function (data) {
+        console.log('user_login recieved....', data);
+        socket.userName = data;
+        // SEND THE LIST OF USERS LOGGED IN....
+        sendCurrentUsers();
     });
+
+    // socket.on('game_state_change', function (data) {
+    //     io.emit('game_state_change', data);
+    //     console.log('broadcasting my-message', data);
+    // });
+
+    // THIS IS THE MAIN SERVER-SIDE EVENT FOR CHANGES TO GAME COUNTERS....
+    socket.on('counter_data_changed', function( dataObj ){
+      var cd = dataObj.counterData;
+      var property = dataObj.changedProperty;
+      var gameId = dataObj.gameId;
+
+      console.log( 'counter_data_changed');
+      console.log( property + " of " + cd.id );
+      var dbCallback=function( result ){
+        // PASS THE DATA ALONG TO OTHER CLIENTS....
+        console.log("COUNTER DATA SAVED IN MONGO..." + cd.id );
+        socket.broadcast.emit('counter_data_changed', dataObj );
+      }
+      // STORE THE UPDATED COUNTER DATA TO THE DATABASE...
+      app.MongoService.updateCounterData( gameId, cd, dbCallback );
+    });
+
+
+    socket.on('app_is_closing', function (data) {
+        console.log('app_is_closing');
+    });
+// // sending to sender-client only
+// socket.emit('message', "this is a test");
+
+// // sending to all clients, include sender
+// io.emit('message', "this is a test");
+
+// // sending to all clients except sender
+// socket.broadcast.emit('message', "this is a test");
+
+// // sending to all clients in 'game' room(channel) except sender
+// socket.broadcast.to('game').emit('message', 'nice game');
+
+// // sending to all clients in 'game' room(channel), include sender
+// io.in('game').emit('message', 'cool game');
+
+// // sending to sender client, only if they are in 'game' room(channel)
+// socket.to('game').emit('message', 'enjoy the game');
+
+// // sending to all clients in namespace 'myNamespace', include sender
+// io.of('myNamespace').emit('message', 'gg');
+
+// // sending to individual socketid
+// socket.broadcast.to(socketid).emit('message', 'for your eyes only');
 });
