@@ -16323,11 +16323,11 @@ appModule.service('CounterService', function( $timeout, WebSocketService, MainAp
 
     var _unitArr = CounterDataService.getAllUnitsOnMap();
 
-
-    var onCounterMove = function(x, y, x1, y1, evt){
+    var onCounterMove = function( x, y, x1, y1, evt ){
         // this = the counter moving....
-        if (Math.abs(x)<15 && Math.abs(y)<15) 
+        if (Math.abs(x)<15 && Math.abs(y)<15){
             return;  // wait for the mouse to move a bit...
+        }
         var counterSvg = this;
         var counterId = counterSvg.data("counterId");
         var unit = CounterDataService.getUnit( counterId );
@@ -16337,43 +16337,84 @@ appModule.service('CounterService', function( $timeout, WebSocketService, MainAp
         var newHexAbsPoint = null;
 
         MenuService.clearMenus();
-
         if (unit && !unit.isMoving() ){
             unit.isMoving(true);
-            //_that.renderCounter( unit );
-        }
-
+        }//end if...
         if (hexID.substr(0,7)=="hexSvg_") {
             newHexAbsPoint = HexService.getAbsolutePositionFromHexSvg( Snap(targetSvg) );
-        }
+        }//if.
         else if ( Snap(targetSvg).node.parentElement.id.substr(0,3)=="CTR" ){
             var counterId = Snap(Snap(targetSvg).node.parentElement).data("counterId");
             var targetUnit = CounterDataService.getUnit( counterId );
             newHexAbsPoint = targetUnit.getLocation();
-        }
+        }//else
         else {
             return; // if the counter is dropped on something other than hex, fail for now....
-        }
-
-
+        }//else
         var oldAbsPoint = unit.getLocation();
         var hexPt = HexService.getHexCenterPoint( newHexAbsPoint.x, newHexAbsPoint.y );
-
         var unit = CounterDataService.getUnit( unit.getId() );
         var svgRendering = unit.getRendering();
         if ( svgRendering ){
             svgRendering.remove();
             unit.setRendering( null );
-        }
+        }//if
         if ( oldAbsPoint.isEqualTo( newHexAbsPoint )) {
             // THE COUNTER WAS DROPPED IN THE SAME HEX...
             return;
-        }
+        }//if
         var rect = _subLayer.rect( hexPt.x - 40, hexPt.y - 40, 80, 80, 15, 15 );
         unit.setRendering( rect );
         rect.attr({ opacity:0.3, fill:'green'});
-    };  
-     
+    };
+
+        // var onCounterMove = function(x, y, x1, y1, evt){
+        //     // this = the counter moving....
+        //     if (Math.abs(x)<15 && Math.abs(y)<15){
+        //         return;  // wait for the mouse to move a bit...
+        //     }
+        //     var counterSvg = this;
+        //     var counterId = counterSvg.data("counterId");
+        //     var unit = CounterDataService.getUnit( counterId );
+
+        //     var targetSvg = evt.target;
+        //     var hexID = targetSvg.id;
+        //     var newHexAbsPoint = null;
+
+        //     MenuService.clearMenus();
+
+        //     if (unit && !unit.isMoving() ){
+        //         unit.isMoving(true);
+        //     }//end if...
+
+        //     if (hexID.substr(0,7)=="hexSvg_") {
+        //         newHexAbsPoint = HexService.getAbsolutePositionFromHexSvg( Snap(targetSvg) );
+        //     }//if.
+        //     else if ( Snap(targetSvg).node.parentElement.id.substr(0,3)=="CTR" ){
+        //         var counterId = Snap(Snap(targetSvg).node.parentElement).data("counterId");
+        //         var targetUnit = CounterDataService.getUnit( counterId );
+        //         newHexAbsPoint = targetUnit.getLocation();
+        //     }//else
+        //     else {
+        //         return; // if the counter is dropped on something other than hex, fail for now....
+        //     }//else
+        //     var oldAbsPoint = unit.getLocation();
+        //     var hexPt = HexService.getHexCenterPoint( newHexAbsPoint.x, newHexAbsPoint.y );
+        //     var unit = CounterDataService.getUnit( unit.getId() );
+        //     var svgRendering = unit.getRendering();
+        //     if ( svgRendering ){
+        //         svgRendering.remove();
+        //         unit.setRendering( null );
+        //     }//if
+        //     if ( oldAbsPoint.isEqualTo( newHexAbsPoint )) {
+        //         // THE COUNTER WAS DROPPED IN THE SAME HEX...
+        //         return;
+        //     }//if
+        //     var rect = _subLayer.rect( hexPt.x - 40, hexPt.y - 40, 80, 80, 15, 15 );
+        //     unit.setRendering( rect );
+        //     rect.attr({ opacity:0.3, fill:'green'});
+        // };  
+         
 
     var onCounterStartMove = function(x){
         // this = the counter moving....
